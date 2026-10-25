@@ -262,3 +262,70 @@
  .carousel-controls{padding:0 4px;gap:4px}
  .carousel-controls .research-section-title{font-size:11px}
 }
+
+/* Compact landscape catalogue and selected-company masonry research. */
+#landscape-ipo-picker{display:none}
+@media (min-width:560px) and (orientation:landscape){
+ main.research-workspace{display:flex;flex-direction:column;overflow:hidden;padding:0 16px max(12px,env(safe-area-inset-bottom));gap:0}
+ .research-workspace #feed-section{display:grid;grid-template-columns:clamp(150px,18vw,212px) minmax(0,1fr);grid-template-rows:28px minmax(0,1fr);gap:0 16px;flex:1;min-height:0}
+ .research-workspace .section-heading{grid-column:1/-1;grid-row:1}
+ .research-workspace #empty{grid-column:1/-1;grid-row:2;align-self:start}
+ #landscape-ipo-picker{display:flex;flex-direction:column;grid-column:1;grid-row:2;min-height:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+ .picker-label{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--muted);padding:9px 10px;margin:0;border-bottom:1px solid var(--line)}
+ #landscape-ipo-picker ul{list-style:none;margin:0;padding:4px;overflow-y:auto;scrollbar-width:thin;min-height:0;overscroll-behavior:contain}
+ #landscape-ipo-picker li{margin:0;padding:0}
+ #landscape-ipo-picker button{display:block;width:100%;border:1px solid transparent;border-radius:7px;background:transparent;text-align:left;padding:7px 8px;margin:1px 0;color:inherit;min-height:42px;font-weight:500}
+ #landscape-ipo-picker button>span{display:block;font-size:12px;line-height:1.3;overflow-wrap:anywhere}
+ #landscape-ipo-picker small{display:block;font-size:9px;line-height:1.25;color:var(--muted);margin-top:3px}
+ #landscape-ipo-picker button[aria-pressed=true]{background:#f2effa;border-color:#d9cdef;color:#503692;box-shadow:inset 3px 0 #7654ae}
+ #landscape-ipo-picker button[aria-pressed=true]>span{font-weight:750}
+ .research-workspace #catalogue{grid-column:2;grid-row:2;display:block;min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding:12px;padding:0 2px 8px}
+ .research-workspace .ipo-card:not([data-research-selected=true]){display:none!important}
+ .research-workspace .ipo-card{border:0;border-radius:0;background:transparent;overflow:visible;margin:0}
+ .research-workspace .ipo-card>article{display:grid;grid-template-columns:minmax(0,1fr) 80px;grid-template-rows:auto auto;height:auto;gap:14px 8px;align-items:start}
+ .research-workspace .research-identity{grid-column:1;grid-row:1;padding:0;min-width:0;overflow:visible;background:transparent;border:0}
+ .research-workspace .card-heading{display:grid;grid-template-columns:32px minmax(0,1fr);gap:3px 9px;align-items:start;padding:0}
+ .research-workspace .issuer-mark{grid-column:1;grid-row:1/span 2;width:30px;height:30px;font-size:15px}
+ .research-workspace .card-heading>div:nth-child(2){grid-column:2;grid-row:1;order:0;min-width:0}
+ .research-workspace .card-heading h3{font-size:18px;line-height:1.3}
+ .research-workspace .card-heading p{font-size:11px;line-height:1.4;margin:3px 0}
+ .research-workspace .lifecycle{grid-column:2;grid-row:2;margin:0;justify-self:start;font-size:9px;padding:3px 7px}
+ .research-workspace .card-actions{grid-column:2;grid-row:1;border:0;padding:0;background:transparent;justify-content:flex-end;gap:0}
+ .research-workspace .card-actions .like-button,.research-workspace .card-actions .comment-button{display:none}
+ .research-workspace .card-actions .save-button{margin-left:0}
+ .research-workspace .ipo-card .carousel{grid-column:1/-1;grid-row:2;display:block;columns:280px;column-gap:16px;height:auto;min-height:0;max-height:none;overflow:visible;scroll-snap-type:none;scroll-behavior:auto;isolation:auto;touch-action:auto}
+ .research-workspace .carousel .carousel-slide,.research-workspace .carousel .carousel-slide[inert]{position:static;display:inline-block;vertical-align:top;inset:auto;width:100%;height:auto;min-height:0;padding:16px;margin:0 0 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:visible!important;break-inside:avoid;scroll-snap-align:none;transform:none!important}
+ .research-workspace .carousel .carousel-slide>h4{font-size:17px;line-height:1.3;margin:0 0 13px}
+ .research-workspace .carousel .carousel-slide p{font-size:14px;line-height:1.6}
+ .research-workspace .carousel-slide h5{font-size:13px}
+ .research-workspace .offer-slide .issue-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0 0 12px;padding:9px;gap:8px}
+ .research-workspace .offer-slide .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;padding:12px;gap:12px}
+ .research-workspace .offer-slide .metrics dd{font-size:21px;line-height:1.3;white-space:normal}
+ .research-workspace .offer-slide .metrics .metric:last-child dd{font-size:17px}
+ .research-workspace .offer-slide .funding-split{margin-top:12px!important;padding:10px!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .research-workspace .financial-tile{padding:10px 0;border-top:1px solid var(--line)}
+ .research-workspace .financial-tile:first-of-type{border-top:0;padding-top:0}
+ .research-workspace .financial-heading h5{font-size:13px}
+ .research-workspace .financial-pair dd{font-size:22px}
+ .research-workspace .carousel .financial-slide p.financial-meaning{font-size:12px}
+ .research-workspace .carousel-controls{display:none}
+ .research-workspace .data-label{margin:7px 0;font-size:11px}
+ .evidence-mode #landscape-ipo-picker button[aria-pressed=true]{background:#251c36;color:#d1b7ff;border-color:#49335e}
+}
+@media (min-width:560px) and (max-width:799px) and (orientation:landscape){
+ main.research-workspace{padding-left:10px;padding-right:10px}
+ .research-workspace #feed-section{grid-template-columns:136px minmax(0,1fr);column-gap:10px}
+ #landscape-ipo-picker button{padding:6px}
+ #landscape-ipo-picker button>span{font-size:11px}
+ .research-workspace .card-heading h3{font-size:15px}
+ .research-workspace .ipo-card .carousel{columns:1}
+ .research-workspace .carousel .carousel-slide{padding:13px}
+}
+@media (min-width:560px) and (orientation:landscape){
+ .research-workspace .research-identity{position:sticky;top:0;z-index:4;background:var(--card);padding:8px 0;box-shadow:8px 0 var(--card),0 8px var(--card)}
+ .research-workspace .card-actions{position:sticky;top:0;z-index:4;background:var(--card);padding:8px 0;box-shadow:-8px 0 var(--card),0 8px var(--card)}
+}
+@media (min-width:560px) and (orientation:landscape){
+ .research-workspace .carousel .offer-slide{display:inline-flex;flex-direction:column;gap:0}
+ .research-workspace .offer-slide>h4{order:-1}
+}
