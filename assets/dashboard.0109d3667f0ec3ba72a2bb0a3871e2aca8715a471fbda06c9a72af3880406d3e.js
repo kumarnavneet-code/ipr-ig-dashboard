@@ -24,8 +24,11 @@ function attachResearchLayout(main){
  }
  function refresh(){
   const active=media.matches&&!feed.hidden,cards=allCards(),visible=cards.filter(c=>!c.hidden);
+  const isMultiColumn=active&&window.innerHeight>520;
   main.classList.toggle('research-workspace',active);
-  for(const card of cards)card.setResearchLayout?.(media.matches);
+  main.classList.toggle('compact-landscape-workspace',active&&!isMultiColumn);
+  main.classList.toggle('desktop-research-workspace',active&&isMultiColumn);
+  for(const card of cards)card.setResearchLayout?.(isMultiColumn);
   if(!visible.some(c=>c.dataset.ipoId===selected))selected=visible[0]?.dataset.ipoId||null;
   picker.hidden=!visible.length;
   const next=visible.map(c=>c.id+'|'+c.querySelector('h3').textContent+'|'+c.querySelector('.lifecycle').textContent).join('\n');
@@ -82,15 +85,17 @@ function openAppWalkthrough(){
  const feed=()=>{$('#feed-nav').click();};
  const firstCard=()=>[...document.querySelectorAll('#catalogue > li')].find(c=>!c.hidden);
  const saveButton=()=>firstCard()?.querySelector('.save-button');
+ const applyButton=()=>firstCard()?.querySelector('.apply-quick-button');
  const steps=[
-  {title:'Let’s try IPO Radar',text:'A quick, hands-on tour. We’ll point to the real buttons as you go.',hint:'Try real controls • Skip any step',label:'Show me',prepare:()=>{},target:()=>null},
+  {title:'Let’s try IPO WISE',text:'A quick, hands-on tour. We’ll point to the real buttons as you go.',hint:'Try real controls • Skip any step',label:'Show me',prepare:()=>{},target:()=>null},
   {title:'Start with these four dates',text:'Opening, closing, allotment and listing — all in Indian time. “est.” means the date may change.',hint:'These are the dates on a real IPO card.',label:'Next: explore the company',prepare:()=>{feed();$('#story-all').click();if($('#evidence-toggle').getAttribute('aria-pressed')==='true')$('#evidence-toggle').click();firstCard()?.querySelector('.carousel-dots button')?.click();},target:()=>firstCard()?.querySelector('.issue-dates')},
   {title:'There’s more behind each card',text:'Swipe left on a card, or tap a dot, to see the business, finances and subscription figures.',hint:'Try the highlighted dot to open the next slide.',label:'Show next slide',prepare:feed,target:()=>firstCard()?.querySelectorAll('.carousel-dots button')[1],activate:()=>{target?.click();advance();},listen:true},
   {title:'Want to follow this IPO?',text:'Tap the bookmark to add this company to My tracker. You can remove it anytime.',hint:'Optional: this saves the company in this browser.',label:'Save this IPO',prepare:feed,target:()=>saveButton()?.getAttribute('aria-pressed')==='true'?$('#records-nav'):saveButton(),activate:()=>{if(target?.getAttribute('aria-pressed')!=='true')target?.click();advance();},listen:true},
-  {title:'Your saved IPOs live here',text:'My tracker brings your saved companies together. “View IPO” takes you back to the full card.',hint:'No saved IPOs? Save a bookmark from Discover first.',label:'Next: Applied & allotment',prepare:()=>{$('#records-nav').click();},target:()=>$('.record-card')||$('#records-nav')},
+  {title:'Applied for this issue?',text:'Once saved, tap “Applied?” to record your application on this device. It activates milestone tracking and monitors allotment.',hint:'Only mark if you applied. It turns into a verified badge on the card.',label:'Mark Applied',prepare:()=>{feed();if(saveButton()?.getAttribute('aria-pressed')!=='true')saveButton()?.click();if(applyButton())applyButton().hidden=false;},target:()=>applyButton(),activate:()=>{if(target&&!target.classList.contains('applied-active'))target.click();advance();},listen:true},
+  {title:'Your saved IPOs live here',text:'My tracker brings your saved companies together. “View IPO” takes you back to the full card.',hint:'Your saved issues and application status stay on this device.',label:'Next: check the sources',prepare:()=>{$('#records-nav').click();},target:()=>$('.record-card')||$('#records-nav')},
   {title:'Already applied through your broker?',text:'Switch on Applied for that IPO. When allotment is published, use Check allotment to open its registrar’s status page.',hint:'Only mark Applied if you really applied. This does not submit an application.',label:'Next: check the sources',prepare:()=>{$('#records-nav').click();},target:()=>$('.applied-toggle')||$('#records-nav')},
   {title:'Look beyond the numbers',text:'Facts & risks shows the sources and research limitations. Tap the highlighted switch to take a look.',hint:'Missing information is labelled. An expected date is not a confirmed result.',label:'Show facts & risks',prepare:feed,target:()=>$('#evidence-toggle'),activate:()=>{if(target?.getAttribute('aria-pressed')!=='true')target?.click();advance();},listen:true},
-  {title:'You’re ready. Find a company?',text:'Tap Search, type a few letters, then pick a company from the suggestions. The circles above the feed help you filter IPOs by stage.',hint:'Your watchlist stays on this device. Replay this tour from App walkthrough anytime.',label:'Try Search',prepare:feed,target:()=>$('#search-nav'),activate:()=>{close(false);$('#search-nav').click();}}
+  {title:'You’re ready. Find a company?',text:'Tap Search, type a few letters, then pick a company from the suggestions. The circles above the feed help you filter IPOs by stage.',hint:'Your watchlist stays on this device. Replay this tour from App tour anytime.',label:'Try Search',prepare:feed,target:()=>$('#search-nav'),activate:()=>{close(false);$('#search-nav').click();}}
  ];
  function advance(){if(index<steps.length-1){index++;render();}else close();}
  back.onclick=()=>{index--;render();};skip.onclick=advance;
@@ -115,16 +120,18 @@ function openAppWalkthrough(){
   counter.textContent=index===0?'QUICK START':`${index} / ${steps.length-1}`;
   title.textContent=s.title;text.textContent=s.text;hint.textContent=s.hint;
   if(index>0&&!target){text.textContent='There are no IPOs available in this feed right now. You can still learn where to find your watchlist, sources and search.';hint.textContent='Continue the tour, or exit and try again after the feed updates.';}
-  if(index===4&&$('.record-card'))hint.textContent='These are your saved companies. Your bookmarks stay on this device.';
-  const alreadySaved=index===3&&saveButton()?.getAttribute('aria-pressed')==='true';
+  if(s.title==='Your saved IPOs live here'&&$('.record-card'))hint.textContent='These are your saved companies. Your bookmarks stay on this device.';
+  const alreadySaved=s.title==='Want to follow this IPO?'&&saveButton()?.getAttribute('aria-pressed')==='true';
   if(alreadySaved){text.textContent='This company is already in your watchlist. Let’s see where to find it.';hint.textContent='Your existing bookmark stays saved.';}
+  const alreadyApplied=s.title==='Applied for this issue?'&&(applyButton()?.classList.contains('applied-active')||applyButton()?.textContent.includes('✓'));
+  if(alreadyApplied){text.textContent='This company is already marked as applied on this device.';hint.textContent='It highlights the milestone timeline and monitors allotment.';}
   back.hidden=index===0;skip.hidden=index===0;skip.textContent=index===steps.length-1?'Finish':'Skip';
-  action.textContent=index>0&&!target?'Continue':alreadySaved?'Open My tracker':s.label;
+  action.textContent=index>0&&!target?'Continue':alreadySaved?'Continue':alreadyApplied?'Continue':s.label;
   action.onclick=()=>{if(s.activate&&target)s.activate();else advance();};
-  if(s.listen&&target){const handler=()=>queueMicrotask(()=>{if(closed||steps[index]!==s)return;if(index===6){removeAction();target=firstCard()?.querySelector('.research-sources summary');target?.scrollIntoView({block:'center',behavior:'instant'});title.textContent='See where the figures come from';text.textContent='Tap Sources & observation dates to see the evidence behind this IPO. You can also open the company and offer documents here.';hint.textContent='Take a look, then continue when you’re ready.';action.textContent='Next: find a company';action.onclick=advance;position();title.focus({preventScroll:true});}else advance();});target.addEventListener('click',handler);removeAction=()=>target?.removeEventListener('click',handler);}else removeAction=()=>{};
+  if(s.listen&&target){const handler=()=>queueMicrotask(()=>{if(closed||steps[index]!==s)return;if(s.title==='Look beyond the numbers'){removeAction();target=firstCard()?.querySelector('.research-sources summary');target?.scrollIntoView({block:'center',behavior:'instant'});title.textContent='See where the figures come from';text.textContent='Tap Sources & observation dates to see the evidence behind this IPO. You can also open the company and offer documents here.';hint.textContent='Take a look, then continue when you’re ready.';action.textContent='Next: find a company';action.onclick=advance;position();title.focus({preventScroll:true});}else advance();});target.addEventListener('click',handler);removeAction=()=>target?.removeEventListener('click',handler);}else removeAction=()=>{};
   // A single primary action avoids accidental double advances from the highlighted control.
   if(index===steps.length-1&&target){const searchTarget=target;const finish=()=>close(false);searchTarget.addEventListener('click',finish,true);removeAction=()=>searchTarget.removeEventListener('click',finish,true);}
-  if(s.listen&&target)action.onclick=()=>{if(alreadySaved)advance();else target.click();};
+  if(s.listen&&target)action.onclick=()=>{if(alreadySaved||alreadyApplied)advance();else target.click();};
   position();title.focus({preventScroll:true});requestAnimationFrame(position);
  }
  function onKey(e){if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){
@@ -135,7 +142,18 @@ function openAppWalkthrough(){
   if(($('#evidence-toggle').getAttribute('aria-pressed')==='true')!==evidenceWasOn)$('#evidence-toggle').click();
   if(originalStory)document.getElementById(originalStory)?.click();
   $('#search').value=savedQuery;$('#lifecycle-filter').value=savedStage;$('#search').dispatchEvent(new Event('input',{bubbles:true}));
-  if(restore){$(originalView==='feed'?'#feed-nav':'#records-nav').click();$('#main').scrollTop=scroll;if(trigger?.isConnected)trigger.focus({preventScroll:true});}
+  // Reset all cards in the feed back to slide 0 (The issue at a glance)
+  document.querySelectorAll('#catalogue > li').forEach(card=>{
+    if(typeof card.resetSlide==='function')card.resetSlide();
+    const dots=card.querySelectorAll('.carousel-dots button');
+    if(dots&&dots[0])dots[0].click();
+    const slider=card.querySelector('.carousel');
+    if(slider)slider.scrollTo({left:0,behavior:'instant'});
+  });
+  // End on feed showing the 0th card at the top
+  $('#feed-nav').click();
+  $('#main').scrollTo({top:0,behavior:'instant'});
+  if(trigger?.isConnected)trigger.focus({preventScroll:true});
  }
  document.addEventListener('keydown',onKey,true);window.addEventListener('resize',position);document.addEventListener('scroll',position,true);render();
 }
@@ -153,7 +171,7 @@ function validDate(value) {
 }
 function validTimestamp(value) {
   if (typeof value !== 'string') return false;
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/);
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/);
   if (!match || !validDate(match[1]) || +match[2] > 23 || +match[3] > 59 || +match[4] > 59) return false;
   if (match[5] !== 'Z' && (+match[5].slice(1, 3) > 23 || +match[5].slice(4) > 59)) return false;
   return Number.isFinite(Date.parse(value));
@@ -213,7 +231,7 @@ function validateCatalogue(catalogue, schema) {
     if (duplicated(ipo.sources.map(s => s.id))) fail(id, 'duplicate source IDs');
     if (duplicated(ipo.observations.map(s => s.key))) fail(id, 'duplicate observation keys');
     const sources = new Map(ipo.sources.map(s => [s.id, s]));
-    for (const entry of [ipo, ...ipo.observations, ...ipo.notes, ...(ipo.buzz ? [ipo.buzz] : [])]) {
+    for (const entry of [ipo, ...ipo.observations, ...ipo.notes]) {
       for (const ref of entry.sourceIds) if (!sources.has(ref)) fail(id, `unknown source reference ${ref}`);
       if (entry.observedAt && Date.parse(entry.observedAt) > Date.parse(ipo.updatedAt)) fail(id, 'observation is newer than issuer update');
     }
@@ -346,7 +364,7 @@ function createConnectedFeed({fetcher=fetch,cryptoProvider=globalThis.crypto,bas
 return {createConnectedFeed};})();
 modules["src/data/catalogue.js"]=(()=>{const {validateCatalogue}=modules["src/domain/validation.js"];
 async function loadCatalogue(mode = 'demo', fetcher = fetch) {
-  if (!['demo', 'curated'].includes(mode)) throw new Error('Choose a supported catalogue mode.');
+  if (!['demo', 'curated', 'worst', 'one'].includes(mode)) throw new Error('Choose a supported catalogue mode.');
   const read = async path => {
     const response = await fetcher(new URL(path, new URL("src/data/catalogue.js",document.baseURI).href));
     if (!response.ok) throw new Error('The selected catalogue could not be loaded.');
@@ -453,20 +471,8 @@ modules["src/domain/feed-order.js"]=(()=>{const {getLifecycle}=modules["src/doma
 const {validTimestamp}=modules["src/domain/validation.js"];
 const dayFormat = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'});
 const day = value => validTimestamp(value) ? dayFormat.format(new Date(value)) : null;
-// Attention scores are comparable only when measured using the same method.
-function attention(ipo, now) {
-  const buzz = ipo.buzz;
-  if (!buzz || !Number.isFinite(buzz.score) || !buzz.sourceIds?.length || !validTimestamp(buzz.observedAt)) return null;
-  const age = Date.parse(now) - Date.parse(buzz.observedAt);
-  return age >= 0 && age <= 86400000 ? buzz : null;
-}
 function sortFeed(ipos, now) {
   const today = day(now);
-  const methods = new Map();
-  for (const ipo of ipos) {
-    const closing = day(ipo.timeline?.closesAt), value = attention(ipo, now);
-    if (closing && value) { if (!methods.has(closing)) methods.set(closing, new Set()); methods.get(closing).add(value.method); }
-  }
   function key(ipo) {
     const closeDay = day(ipo.timeline?.closesAt);
     const state = getLifecycle(ipo, now).status;
@@ -479,14 +485,6 @@ function sortFeed(ipos, now) {
   return [...ipos].sort((a,b) => {
     const ka=key(a), kb=key(b);
     if (ka[0] !== kb[0]) return ka[0]-kb[0];
-    const closeA=day(a.timeline?.closesAt), closeB=day(b.timeline?.closesAt);
-    if (closeA && closeA === closeB) {
-      const ba=attention(a,now), bb=attention(b,now);
-      if (methods.get(closeA)?.size === 1) {
-        if (Boolean(ba) !== Boolean(bb)) return ba ? -1 : 1;
-        if (ba && bb && ba.score !== bb.score) return bb.score-ba.score;
-      }
-    }
     return ka[1]-kb[1] || a.issuer.localeCompare(b.issuer,'en') || a.id.localeCompare(b.id);
   });
 }
@@ -551,7 +549,7 @@ async function createResearchImages(card,{all=false}={}){
  const panels=[...original.querySelectorAll('.carousel-slide')],current=Math.max(0,panels.findIndex(p=>p.dataset.current==='true'||p.getAttribute('aria-hidden')==='false'&&!original.querySelector('[data-current=true]')));
  const indices=all?panels.map((_,i)=>i):[current],files=[];
  for(const index of indices){const host=document.createElement('div');host.className='share-capture';host.style.cssText=`position:fixed;left:-10000px;top:0;width:${original.getBoundingClientRect().width}px;background:var(--card);padding:12px 0;`;
- const brand=document.createElement('div');brand.textContent='IPO Radar';brand.style.cssText='font-weight:800;padding:0 12px 8px;font-size:16px';host.append(brand);const clone=original.cloneNode(true);clone.querySelector('.card-actions')?.remove();const copies=[...clone.querySelectorAll('.carousel-slide')];copies.forEach((p,i)=>{if(i!==index)p.remove();else{p.inert=false;p.removeAttribute('aria-hidden');p.style.transform='none';}});clone.querySelector('.carousel-dots')?.remove();clone.querySelector('.slide-counter').textContent=`${index+1} / ${panels.length}`;host.append(clone);document.body.append(host);
+ const brand=document.createElement('div');brand.textContent='IPO WISE';brand.style.cssText='font-weight:800;padding:0 12px 8px;font-size:16px';host.append(brand);const clone=original.cloneNode(true);clone.querySelector('.card-actions')?.remove();const copies=[...clone.querySelectorAll('.carousel-slide')];copies.forEach((p,i)=>{if(i!==index)p.remove();else{p.inert=false;p.removeAttribute('aria-hidden');p.style.transform='none';}});clone.querySelector('.carousel-dots')?.remove();clone.querySelector('.slide-counter').textContent=`${index+1} / ${panels.length}`;host.append(clone);document.body.append(host);
  try{const canvas=await captureDOM(host,{backgroundColor:getComputedStyle(original).backgroundColor==='rgba(0, 0, 0, 0)'?getComputedStyle(document.body).getPropertyValue('--card'):getComputedStyle(original).backgroundColor,scale:Math.max(2,1080/host.clientWidth),logging:false,useCORS:false,allowTaint:false});const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Image export unavailable')),'image/png'));files.push(new File([blob],`ipo-radar-${card.issuer.replace(/[^a-z0-9]+/gi,'-').slice(0,60)}-${String(index+1).padStart(2,'0')}.png`,{type:'image/png'}));}finally{host.remove();}
  }
  return files;
@@ -592,55 +590,416 @@ async function copyText(text, clipboard) {
 }
 
 return {copyText};})();
+modules["src/components/toaster.js"]=(()=>{let toasterContainer = null;
+const activeToasts = [];
+let toastIdCounter = 0;
+
+function ensureToaster() {
+  if (toasterContainer && toasterContainer.isConnected) return toasterContainer;
+  toasterContainer = document.createElement('div');
+  toasterContainer.className = 'sonner-toaster';
+  toasterContainer.setAttribute('role', 'region');
+  toasterContainer.setAttribute('aria-label', 'Notifications');
+  toasterContainer.setAttribute('tabindex', '-1');
+  
+  // Pause dismissal on hover / touch
+  toasterContainer.addEventListener('mouseenter', () => pauseAll(true));
+  toasterContainer.addEventListener('mouseleave', () => pauseAll(false));
+  toasterContainer.addEventListener('touchstart', () => pauseAll(true), { passive: true });
+  toasterContainer.addEventListener('touchend', () => pauseAll(false), { passive: true });
+  
+  document.body.appendChild(toasterContainer);
+  return toasterContainer;
+}
+
+function pauseAll(paused) {
+  for (const item of activeToasts) {
+    if (paused) {
+      if (item.timer) {
+        clearTimeout(item.timer);
+        item.timer = null;
+        item.remainingTime = Math.max(200, (item.dismissAt || 0) - Date.now());
+      }
+    } else {
+      if (!item.timer && !item.persisted) {
+        item.dismissAt = Date.now() + (item.remainingTime || 2000);
+        item.timer = setTimeout(() => dismissToast(item.id), item.remainingTime || 2000);
+      }
+    }
+  }
+}
+
+function updateStack() {
+  const visible = activeToasts.slice(-3).reverse(); // latest first
+  for (let i = 0; i < visible.length; i++) {
+    const item = visible[i];
+    const offset = -i * 10;
+    const scale = 1 - i * 0.05;
+    const opacity = i === 0 ? 1 : i === 1 ? 0.88 : 0.6;
+    const zIndex = 30 - i;
+    item.element.style.setProperty('--toast-offset', `${offset}px`);
+    item.element.style.setProperty('--toast-scale', `${scale}`);
+    item.element.style.setProperty('--toast-opacity', `${opacity}`);
+    item.element.style.zIndex = String(zIndex);
+    item.element.dataset.stackIndex = String(i);
+  }
+}
+
+function dismissToast(id) {
+  const index = activeToasts.findIndex(t => t.id === id);
+  if (index === -1) return;
+  const item = activeToasts[index];
+  if (item.timer) clearTimeout(item.timer);
+  item.element.classList.add('sonner-toast-exiting');
+  setTimeout(() => {
+    item.element.remove();
+    const curIdx = activeToasts.findIndex(t => t.id === id);
+    if (curIdx !== -1) activeToasts.splice(curIdx, 1);
+    updateStack();
+  }, 180);
+}
+
+function getIconSvg(type) {
+  switch (type) {
+    case 'success':
+    case 'applied':
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon success"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/><path d="m6.5 10 2.5 2.5 4.5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    case 'saved':
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon saved"><path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h7A1.5 1.5 0 0 1 15 3.5V17.5L10 14l-5 3.5V3.5Z" fill="currentColor"/></svg>';
+    case 'removed':
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon removed"><path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h7A1.5 1.5 0 0 1 15 3.5V17.5L10 14l-5 3.5V3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    case 'liked':
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon liked"><path d="M10 16.5s-6-3.8-6-7.8a3.7 3.7 0 0 1 6-2.8 3.7 3.7 0 0 1 6 2.8c0 4-6 7.8-6 7.8Z" fill="currentColor"/></svg>';
+    case 'error':
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon error"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="6" x2="10" y2="11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14" r="1" fill="currentColor"/></svg>';
+    case 'info':
+    default:
+      return '<svg viewBox="0 0 20 20" fill="none" class="sonner-icon info"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="9.5" x2="10" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6.5" r="1" fill="currentColor"/></svg>';
+  }
+}
+
+function toast(message, options = {}) {
+  const container = ensureToaster();
+  const id = ++toastIdCounter;
+  const duration = options.duration ?? 2800;
+  const type = options.type || 'info';
+
+  // Haptic feedback
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate(8); } catch {}
+  }
+
+  const el = document.createElement('div');
+  el.className = `sonner-toast sonner-toast-${type}`;
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.dataset.id = String(id);
+
+  const iconWrapper = document.createElement('span');
+  iconWrapper.className = 'sonner-icon-wrapper';
+  iconWrapper.innerHTML = getIconSvg(type);
+
+  const content = document.createElement('div');
+  content.className = 'sonner-content';
+
+  const title = document.createElement('p');
+  title.className = 'sonner-title';
+  title.textContent = message;
+  content.appendChild(title);
+
+  if (options.description) {
+    const desc = document.createElement('p');
+    desc.className = 'sonner-description';
+    desc.textContent = options.description;
+    content.appendChild(desc);
+  }
+
+  el.appendChild(iconWrapper);
+  el.appendChild(content);
+
+  if (options.action) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sonner-action-button';
+    btn.textContent = options.action.label;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      options.action.onClick?.(e);
+      dismissToast(id);
+    };
+    el.appendChild(btn);
+  }
+
+  // Swipe-to-dismiss
+  let startX = 0, startY = 0, currentDeltaY = 0;
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  el.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    currentDeltaY = e.touches[0].clientY - startY;
+    if (currentDeltaY > 0) {
+      el.style.transform = `translate(-50%, ${currentDeltaY}px) scale(var(--toast-scale, 1))`;
+    }
+  }, { passive: true });
+
+  el.addEventListener('touchend', () => {
+    if (currentDeltaY > 40) {
+      dismissToast(id);
+    } else {
+      el.style.transform = '';
+    }
+    currentDeltaY = 0;
+  }, { passive: true });
+
+  container.appendChild(el);
+
+  const toastItem = {
+    id,
+    element: el,
+    persisted: duration === Infinity,
+    remainingTime: duration,
+    dismissAt: Date.now() + duration,
+    timer: null
+  };
+
+  if (duration !== Infinity) {
+    toastItem.timer = setTimeout(() => dismissToast(id), duration);
+  }
+
+  // Cap visible stack to 3: remove extra older items
+  if (activeToasts.length >= 3) {
+    const oldest = activeToasts[0];
+    dismissToast(oldest.id);
+  }
+
+  activeToasts.push(toastItem);
+  updateStack();
+
+  return id;
+}
+
+toast.success = (msg, opts) => toast(msg, { ...opts, type: 'success' });
+toast.info = (msg, opts) => toast(msg, { ...opts, type: 'info' });
+toast.error = (msg, opts) => toast(msg, { ...opts, type: 'error' });
+toast.saved = (msg, opts) => toast(msg, { ...opts, type: 'saved' });
+toast.removed = (msg, opts) => toast(msg, { ...opts, type: 'removed' });
+toast.liked = (msg, opts) => toast(msg, { ...opts, type: 'liked' });
+toast.applied = (msg, opts) => toast(msg, { ...opts, type: 'applied' });
+toast.dismiss = dismissToast;
+
+return {dismissToast,toast};})();
 modules["src/components/share-menu.js"]=(()=>{const {createResearchImages}=modules["src/components/share-card.js"];
 const {shareLinks,isLocalShare}=modules["src/domain/sharing.js"];
 const {shareResearch}=modules["src/domain/research-actions.js"];
 const {copyText}=modules["src/domain/clipboard.js"];
-function openShareMenu(payload,caption) {
- const trigger=document.activeElement;let imageFile=null,imageFiles=[],imageURLs=[],generation=0;
- const make=(tag,text)=>{const element=document.createElement(tag);if(text)element.textContent=text;return element;};
- const dialog=make('dialog');dialog.className='share-dialog platform-share';dialog.setAttribute('aria-labelledby','share-title');
- const heading=make('h2',payload.title);heading.id='share-title';
- const intro=make('p','Good research starts a better conversation. Choose where to share it.');
- const previewLabel=make('label','Message preview');const preview=make('textarea');preview.readOnly=true;preview.rows=5;previewLabel.append(preview);
- const destinations=make('div');destinations.className='share-destinations';
- const whatsapp=make('a','WhatsApp');const x=make('a','X');for(const link of [whatsapp,x]){link.target='_blank';link.rel='noopener noreferrer';}
- const instagram=make('button','Instagram · post or DM');instagram.type='button';
- const native=make('button',payload.card?'Share card to apps…':'More apps…');native.type='button';
- const download=make('div');download.hidden=true;download.className='share-download';
- const image=make('img');image.className='share-card-preview';image.alt=payload.card?payload.card.issuer+' share card':'';image.hidden=true;
- const feedback=make('p');feedback.setAttribute('role','status');
- const copy=make('button','Copy message & link');copy.type='button';copy.className='share-copy';
- const close=make('button','Close');close.type='button';close.onclick=()=>dialog.close();
- const message=()=>payload.text;
- const update=()=>{preview.value=message()+'\n\n'+payload.url;const links=shareLinks(message(),payload.url,caption);whatsapp.href=links.whatsapp;x.href=links.x;};update();
- const copyMessage=async instagramMode=>{if(await copyText(preview.value,navigator.clipboard))feedback.textContent=instagramMode?'Copied. Open Instagram and paste into a direct message.':'Copied. Paste into any conversation.';else{preview.focus();preview.select();feedback.textContent='Select and copy the message, then paste into your preferred app.';}};
- copy.onclick=()=>copyMessage(false);instagram.onclick=async()=>{if(imageFile&&navigator.canShare?.({files:imageFiles})){const result=await shareResearch({files:imageFiles,title:payload.title,text:caption},navigator.share?.bind(navigator));feedback.textContent=result==='shared'?'Card shared.':result==='cancelled'?'Sharing cancelled.':'Download the research images below, then attach them in an Instagram post or DM.';}else{feedback.textContent='Download the research images below, then choose them in an Instagram post or DM. Copy the caption if needed.';}};
- native.onclick=async()=>{const result=await shareResearch(imageFile&&navigator.canShare?.({files:imageFiles})?{title:payload.title,text:message(),url:payload.url,files:imageFiles}:{title:payload.title,text:message(),url:payload.url},navigator.share?.bind(navigator));feedback.textContent=result==='shared'?'Shared through your device.':result==='cancelled'?'Sharing cancelled. Choose another destination when ready.':'Device sharing is unavailable here. Choose WhatsApp, X or copy the message.';};
- destinations.append(whatsapp,x,instagram,native);dialog.append(heading,intro,destinations,image,download,previewLabel);
- if(isLocalShare(payload.url)){const notice=make('p','Local preview link: recipients need access to this computer’s preview address. Public links become available after hosting.');notice.className='share-local-notice';dialog.append(notice);}
- dialog.append(feedback,copy,close);document.body.append(dialog);dialog.addEventListener('close',()=>{dialog.remove();for(const url of imageURLs)URL.revokeObjectURL(url);if(trigger?.isConnected)trigger.focus({preventScroll:true});});dialog.showModal();native.focus();
- const renderImages=async()=>{const token=++generation;native.disabled=instagram.disabled=true;feedback.textContent='Preparing research images…';try{const files=await createResearchImages(payload.card,{all:false});if(!dialog.isConnected||token!==generation)return;for(const url of imageURLs)URL.revokeObjectURL(url);imageFiles=files;imageFile=files[0];imageURLs=files.map(file=>URL.createObjectURL(file));image.src=imageURLs[0];image.hidden=false;download.replaceChildren();download.removeAttribute('href');download.hidden=false;files.forEach((file,i)=>{const link=make('a',files.length===1?'Download this research image':`Download research slide ${i+1}`);link.href=imageURLs[i];link.download=file.name;link.style.display='block';download.append(link);});feedback.textContent=files.length+' research image'+(files.length===1?'':'s')+' ready. Choose an app, or download for an Instagram post or DM.';}catch{feedback.textContent='Image export is unavailable here. The message and link can still be shared.';}finally{if(token===generation)native.disabled=instagram.disabled=false;}};
- if(payload.card)renderImages();
+const {toast}=modules["src/components/toaster.js"];
+
+function openShareMenu(payload, caption) {
+  const trigger = document.activeElement;
+  let imageFile = null, imageFiles = [], imageURLs = [], generation = 0;
+  const make = (tag, text, className) => {
+    const el = document.createElement(tag);
+    if (text) el.textContent = text;
+    if (className) el.className = className;
+    return el;
+  };
+  const haptic = ms => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate(ms); } catch {}
+  };
+
+  const dialog = make('dialog', null, 'share-dialog platform-share');
+  dialog.setAttribute('aria-labelledby', 'share-title');
+
+  // Sheet grabber handle
+  const grabber = make('div', null, 'sheet-grabber');
+  grabber.setAttribute('aria-hidden', 'true');
+
+  // Header row: Title + Subtitle + 32px Circular Close
+  const header = make('div', null, 'share-header');
+  const titleGroup = make('div', null, 'share-title-group');
+  const heading = make('h2', payload.title, 'share-title');
+  heading.id = 'share-title';
+  const subtitle = make('p', 'Verified IPO research & figures', 'share-subtitle');
+  titleGroup.append(heading, subtitle);
+
+  const closeBtn = make('button', '×', 'share-close-btn');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close share sheet');
+  header.append(titleGroup, closeBtn);
+
+  // 4-Action Grid: Copy Link, WhatsApp, X, More Apps
+  const destinations = make('div', null, 'share-destinations');
+
+  const copyBtn = make('button', null, 'dest-btn dest-copy');
+  copyBtn.type = 'button';
+  copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy link</span>';
+
+  const whatsapp = make('a', null, 'dest-btn dest-whatsapp');
+  whatsapp.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg><span>WhatsApp</span>';
+  whatsapp.target = '_blank';
+  whatsapp.rel = 'noopener noreferrer';
+
+  const xLink = make('a', null, 'dest-btn dest-x');
+  xLink.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg><span>X</span>';
+  xLink.target = '_blank';
+  xLink.rel = 'noopener noreferrer';
+
+  const nativeBtn = make('button', null, 'dest-btn dest-native');
+  nativeBtn.type = 'button';
+  nativeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg><span>More apps</span>';
+
+  destinations.append(copyBtn, whatsapp, xLink, nativeBtn);
+
+  // Draft message preview accordion (collapsed by default to prevent screen clutter)
+  const previewDetails = make('details', null, 'share-accordion share-preview-details');
+  const previewSummary = make('summary', 'Draft message preview');
+  const previewText = make('textarea', null, 'share-preview-textarea');
+  previewText.readOnly = true;
+  previewText.rows = 4;
+  previewDetails.append(previewSummary, previewText);
+
+  // Card image details (if card present, collapsed by default)
+  const imageDetails = make('details', null, 'share-accordion share-card-details');
+  imageDetails.hidden = !payload.card;
+  const imageSummary = make('summary', 'Research card image');
+  const cardBody = make('div', null, 'share-card-body');
+  const image = make('img', null, 'share-card-preview');
+  image.alt = payload.card ? payload.card.issuer + ' share card' : '';
+  image.hidden = true;
+  const download = make('div', null, 'share-download');
+  download.hidden = true;
+  cardBody.append(image, download);
+  imageDetails.append(imageSummary, cardBody);
+
+  const feedback = make('p', null, 'share-feedback');
+  feedback.setAttribute('role', 'status');
+
+  const update = () => {
+    previewText.value = payload.text + '\n\n' + payload.url;
+    const links = shareLinks(payload.text, payload.url, caption);
+    whatsapp.href = links.whatsapp;
+    xLink.href = links.x;
+  };
+  update();
+
+  const copyMessage = async () => {
+    haptic(8);
+    if (await copyText(previewText.value, navigator.clipboard)) {
+      toast.success('Message & link copied to clipboard');
+      feedback.textContent = 'Copied to clipboard. Ready to paste.';
+    } else {
+      previewDetails.open = true;
+      previewText.focus();
+      previewText.select();
+      feedback.textContent = 'Select and copy the message from preview.';
+    }
+  };
+  copyBtn.onclick = copyMessage;
+
+  nativeBtn.onclick = async () => {
+    haptic(8);
+    const result = await shareResearch(
+      imageFile && navigator.canShare?.({ files: imageFiles })
+        ? { title: payload.title, text: payload.text, url: payload.url, files: imageFiles }
+        : { title: payload.title, text: payload.text, url: payload.url },
+      navigator.share?.bind(navigator)
+    );
+    if (result === 'shared') {
+      toast.success('Shared successfully');
+      closeDialog();
+    } else if (result === 'cancelled') {
+      feedback.textContent = 'Sharing cancelled.';
+    } else {
+      copyMessage();
+    }
+  };
+
+  dialog.append(grabber, header, destinations, previewDetails);
+  if (payload.card) dialog.append(imageDetails);
+
+  if (isLocalShare(payload.url)) {
+    const notice = make('p', 'Local preview: recipient requires local network access.', 'share-local-notice');
+    dialog.append(notice);
+  }
+
+  dialog.append(feedback);
+  document.body.append(dialog);
+
+  // Smooth dismiss animation
+  let isClosing = false;
+  const closeDialog = () => {
+    if (isClosing) return;
+    isClosing = true;
+    dialog.classList.add('sheet-closing');
+    setTimeout(() => {
+      dialog.close();
+      dialog.remove();
+      for (const url of imageURLs) URL.revokeObjectURL(url);
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    }, 180);
+  };
+  closeBtn.onclick = closeDialog;
+
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) closeDialog();
+  });
+  dialog.addEventListener('cancel', e => {
+    e.preventDefault();
+    closeDialog();
+  });
+
+  dialog.showModal();
+  copyBtn.focus();
+
+  // Background card image generator (non-blocking)
+  const renderImages = async () => {
+    const token = ++generation;
+    try {
+      const files = await createResearchImages(payload.card, { all: false });
+      if (!dialog.isConnected || token !== generation) return;
+      for (const url of imageURLs) URL.revokeObjectURL(url);
+      imageFiles = files;
+      imageFile = files[0];
+      imageURLs = files.map(file => URL.createObjectURL(file));
+      image.src = imageURLs[0];
+      image.hidden = false;
+      download.replaceChildren();
+      download.hidden = false;
+      files.forEach((file, i) => {
+        const link = make('a', files.length === 1 ? 'Download share card image' : `Download slide ${i + 1}`, 'share-img-download-link');
+        link.href = imageURLs[i];
+        link.download = file.name;
+        download.append(link);
+      });
+    } catch {}
+  };
+  if (payload.card) renderImages();
 }
 
 return {openShareMenu};})();
-modules["src/domain/financial-story.js"]=(()=>{const definitions=[
- ['revenue','Sales','Business performance','Sales generated by the business; growth alone does not establish profitability.'],
- ['profit','Net profit','Business performance','Earnings after tax; check whether accounting profits also turn into cash.'],
- ['pat','Net profit','Business performance','Earnings after tax; check whether accounting profits also turn into cash.'],
- ['ebitda','EBITDA','Operating performance','Earnings before interest, tax, depreciation and amortisation; this is not cash flow.'],
- ['operating_ebitda','Operating EBITDA','Operating performance','Operating earnings before interest, tax, depreciation and amortisation; not cash flow.'],
- ['total_income','Total income','Operating performance','Includes sales and other disclosed income; check how much comes from core operations.'],
- ['cash_flow','Operating cash flow','Cash & funding','Cash generated by operations; helps assess funding needs beyond reported profit.'],
- ['debt','Borrowings','Cash & funding','Debt adds repayment and interest commitments; read it alongside cash generation.'],
- ['net_worth','Net worth','Financial position','The shareholder equity buffer; it is not the market value of the business.'],
- ['assets','Total assets','Financial position','Resources on the balance sheet; asset size alone does not establish returns.'],
- ['diluted_eps','Diluted EPS','Per-share figures','Earnings per share including potential dilution; useful when assessing the offer price.'],
- ['nav','Book value / share','Per-share figures','Net asset value per share; this is an accounting measure, not a market-price estimate.'],
- ['pe_upper_band','P/E at upper band','Valuation & returns','Offer price per ₹1 of annual diluted earnings; compare growth, risks and peers.'],
- ['ronw','Return on net worth','Valuation & returns','Issuer-defined return on shareholder funds; interim figures are not annualised.']
+modules["src/domain/financial-story.js"]=(()=>{// This order is a fixed display contract, not a ranking of importance.
+const definitions=[
+ ['revenue','Revenue','Reported financial figures'],
+ ['total_income','Total income','Reported financial figures'],
+ ['profit','Net profit','Reported financial figures'],
+ ['pat','Net profit','Reported financial figures'],
+ ['ebitda','EBITDA','Reported financial figures'],
+ ['operating_ebitda','Operating EBITDA','Reported financial figures'],
+ ['cash_flow','Operating cash flow','Reported financial figures'],
+ ['assets','Total assets','Reported financial figures'],
+ ['net_worth','Net worth','Reported financial figures'],
+ ['debt','Borrowings','Reported financial figures'],
+ ['diluted_eps','Diluted EPS','Reported financial figures'],
+ ['nav','Book value / share','Reported financial figures'],
+ ['ronw','Return on net worth','Issuer-disclosed ratios'],
+ ['pe_upper_band','P/E at upper band','Calculated figures']
 ];
+const definitionFor=base=>definitions.find(d=>base===d[0]||base.startsWith(d[0]+'_'));
+function financialBasis(observation){return observation?.key==='pe_upper_band'||/\bcalculated\b/i.test(observation?.label||'')?'Calculated by IPO Radar':'Issuer reported';}
 function financialPeriod(period=''){
  if(typeof period!=='string')period='';
  let m=period.match(/^(?:(H[12]|Q[1-4]))?(FY|CY)(\d{4})$/i);
@@ -670,31 +1029,2051 @@ function financialStories(observations=[]){
   const newest=rows[0];let current=newest;
   if(!priorFor(current)){const annual=rows.find(o=>financialPeriod(o.period).annual&&priorFor(o));if(annual)current=annual;}
   const conflicted=rows.some((o,i)=>rows.slice(i+1).some(p=>p.period===o.period&&p.value!==o.value));
-  const prior=conflicted?null:priorFor(current)||null,definition=definitions.find(d=>group.base===d[0]||group.base.startsWith(d[0]+'_'));
+  const prior=conflicted?null:priorFor(current)||null,definition=definitionFor(group.base);
   const scope=group.base.includes('discontinued')?' · discontinued':group.base.includes('continuing')?' · continuing':group.base.includes('icdr')?' · regulatory basis':group.base==='debt'&&newest.label.includes('lease')?' · incl. leases':'';
-  let change=null;
-  if(prior&&Number.isFinite(current.value)){
-   if(current.unit==='percent')change={value:current.value-prior.value,unit:'pp'};
-   else if(prior.value>0)change={value:(current.value-prior.value)/prior.value*100,unit:'%'};
-  }
-  return {title:(definition?.[1]||newest.label)+scope,section:definition?.[2]||'Other financials',meaning:conflicted?'Conflicting values for the same period; review the source documents before comparing.':definition?.[3]||'Read this issuer-disclosed measure alongside its definition and reporting period.',current,prior,recent:!conflicted&&current!==newest?newest:null,change,conflicted,observations:rows};
+  return {base:group.base,title:(definition?.[1]||newest.label)+scope,section:definition?.[2]||'Other reported figures',order:definition?definitions.indexOf(definition):definitions.length,current,prior,recent:!conflicted&&current!==newest?newest:null,conflicted,observations:rows};
  });
 }
 
-// Six financial pages leave room for offer, business, demand and source pages.
 function financialPages(stories){
- const order=['Business performance','Cash & funding','Valuation & returns','Financial position','Per-share figures','Operating performance','Other financials'];
- const ranked=[...stories].sort((a,b)=>Number(/regulatory basis|discontinued/.test(a.title))-Number(/regulatory basis|discontinued/.test(b.title))||order.indexOf(a.section)-order.indexOf(b.section));
- const selected=ranked.slice(0,12),pages=[];
- for(let i=0;i<selected.length;i+=2){const metrics=selected.slice(i,i+2);pages.push({title:metrics.every(m=>m.section===metrics[0].section)?metrics[0].section:'Financial snapshot',metrics});}
+ const ordered=[...stories].sort((a,b)=>(a.order??definitions.length)-(b.order??definitions.length)||a.title.localeCompare(b.title,'en')||(a.base||'').localeCompare(b.base||'','en'));
+ const pages=[];
+ for(let i=0;i<ordered.length;i+=2){const metrics=ordered.slice(i,i+2);pages.push({title:metrics.every(m=>m.section===metrics[0].section)?metrics[0].section:'Reported financial figures',metrics});}
  return pages;
 }
 
-return {financialPeriod,financialValue,financialStories,financialPages};})();
+return {financialBasis,financialPeriod,financialValue,financialStories,financialPages};})();
+modules["src/components/enrichment-slot.js"]=(()=>{// Enrichment slot adapter: renders promoter backgrounds, awards, and coverage notes.
+// Decouples backend enrichment projections from core card UI presentation.
+function renderEnrichmentDetails(ipo, container, {el, sourceLine}) {
+  const profiles = ipo.notes.filter(n => n.text.startsWith('Promoter background · '));
+  if (profiles.length) {
+    const details = el('details', undefined, 'promoter-background');
+    details.append(el('summary', 'Promoter experience & associations'));
+    for (const profile of profiles) {
+      details.append(el('p', profile.text.replace('Promoter background · ', '')), sourceLine(ipo, profile.sourceIds, profile.observedAt));
+    }
+    container.append(details);
+  }
+
+  const awards = ipo.notes.filter(n => n.text.startsWith('Disclosed promoter award · '));
+  if (awards.length) {
+    const details = el('details', undefined, 'promoter-awards');
+    details.append(el('summary', 'Disclosed promoter awards'));
+    for (const award of awards) {
+      details.append(el('p', award.text.replace('Disclosed promoter award · ', '')), sourceLine(ipo, award.sourceIds, award.observedAt));
+    }
+    container.append(details);
+  }
+
+  const coverageNotes = ipo.notes.filter(n => n.text.startsWith('Enrichment coverage · '));
+  for (const note of coverageNotes) {
+    container.append(el('p', note.text.replace('Enrichment coverage · ', ''), 'muted'));
+  }
+}
+
+function isEnrichmentNote(note) {
+  return note.text.startsWith('Promoter background · ') ||
+         note.text.startsWith('Disclosed promoter award · ') ||
+         note.text.startsWith('Enrichment coverage · ');
+}
+
+return {renderEnrichmentDetails,isEnrichmentNote};})();
+modules["src/components/evidence-view.js"]=(()=>{// Evidence & risks view: transforms complex research findings, verification statuses,
+// and IPO risk disclosures into an intuitive, mobile-first experience for retail investors.
+
+function parseFinding(note, ipo) {
+  const text = (note.text || '').trim();
+
+  // Check if it's a discovery / verification status note
+  if (text.startsWith('Official NSE discovery:') || text.startsWith('Partial research preview')) {
+    return {
+      isDiscovery: true,
+      raw: text,
+      kind: 'discovery'
+    };
+  }
+
+  // Extract source document and page citation if present
+  let sourceDoc = null;
+  let pageRef = null;
+  let cleanText = text;
+
+  const citeMatch = text.match(/^(?:Issuer risk disclosure\s*)?\((RHP|DRHP|Prospectus|Offer document)\s*(?:p\.|page)?\s*(\d+)\)\s*:\s*(.*)$/i)
+    || text.match(/^(.*?)\s*\((RHP|DRHP|Prospectus|Offer document)\s*(?:p\.|page)?\s*(\d+)\)\.?$/i);
+
+  if (citeMatch) {
+    if (citeMatch[3] && !isNaN(Number(citeMatch[3]))) {
+      cleanText = citeMatch[1].trim();
+      sourceDoc = citeMatch[2].toUpperCase();
+      pageRef = `Page ${citeMatch[3]}`;
+    } else {
+      sourceDoc = citeMatch[1].toUpperCase();
+      pageRef = `Page ${citeMatch[2]}`;
+      cleanText = citeMatch[3].trim();
+    }
+  }
+
+  // Match working document URL from ipo.documents
+  let sourceUrl = null;
+  let docLabel = sourceDoc || 'Official filing';
+  if (ipo.documents && ipo.documents.length) {
+    if (sourceDoc) {
+      const matched = ipo.documents.find(d =>
+        (d.label || '').toUpperCase().includes(sourceDoc) ||
+        (d.url || '').toUpperCase().includes(sourceDoc)
+      );
+      if (matched) {
+        sourceUrl = matched.url;
+        docLabel = matched.label || sourceDoc;
+      }
+    }
+    if (!sourceUrl && ipo.documents[0]) {
+      sourceUrl = ipo.documents[0].url;
+      docLabel = ipo.documents[0].label || 'Official document';
+    }
+  }
+
+  // Classification
+  let classification = 'Verified Fact';
+  let badgeClass = 'badge-fact';
+  if (note.kind === 'analysis') {
+    classification = 'Editorial Analysis';
+    badgeClass = 'badge-analysis';
+  } else if (text.toLowerCase().includes('issuer risk disclosure') || sourceDoc) {
+    classification = 'Issuer Disclosure';
+    badgeClass = 'badge-disclosure';
+  } else if (text.toLowerCase().includes('unverified') || text.toLowerCase().includes('pending')) {
+    classification = 'Verification Pending';
+    badgeClass = 'badge-pending';
+  }
+
+  // Generate Heading, Summary, and "Why it matters"
+  let heading = '';
+  let summary = '';
+  let whyItMatters = '';
+
+  const lower = cleanText.toLowerCase();
+
+  if (lower.includes('objects of the offer') || lower.includes('appraised by any bank') || lower.includes('funds are being raised')) {
+    heading = 'Use of IPO proceeds not independently appraised';
+    summary = 'The proposed use of IPO funds has not been appraised by any bank or financial institution.';
+    whyItMatters = 'An external financial appraisal is not available to provide additional assurance about the proposed use of funds.';
+  } else if (lower.includes('physical showrooms') || lower.includes('direct sales through our physical')) {
+    heading = '100% revenue dependence on physical showrooms';
+    summary = 'All revenue is derived from direct sales through physical showrooms.';
+    whyItMatters = 'Store disruptions, footfall declines, or lease cancellations directly affect sales without online or wholesale diversification.';
+  } else if (lower.includes('related party transactions') || lower.includes('conflicts of interest')) {
+    heading = 'Past transactions with promoter-related entities';
+    summary = 'The company has entered into transactions with related parties in the past and may continue to do so.';
+    whyItMatters = 'Inter-party business deals can introduce potential conflicts of interest with public shareholders.';
+  } else if (lower.includes('single customer') || lower.includes('top 10 customers') || lower.includes('key customers') || lower.includes('dependence on key customers')) {
+    heading = 'Customer concentration risk';
+    summary = 'A substantial portion of revenue is generated from a concentrated group of customers.';
+    whyItMatters = 'Loss of key clients, renegotiation of contracts, or client spending cuts could materially impact operational revenue.';
+  } else if (lower.includes('limited number of suppliers') || lower.includes('raw materials and components') || lower.includes('prices of raw materials')) {
+    heading = 'Supply chain and raw material cost volatility';
+    summary = 'Manufacturing relies on a limited group of suppliers without long-term price protection.';
+    whyItMatters = 'Raw material cost inflation or supplier delivery delays directly squeeze operating profit margins.';
+  } else if (lower.includes('loss for the period') || lower.includes('incurred a restated loss') || lower.includes('negative cash flows')) {
+    heading = 'Recent operating losses or negative cash flows';
+    summary = 'The business has recorded restated losses or negative operational cash flows in recent fiscal periods.';
+    whyItMatters = 'Historical cash outflows require ongoing external liquidity and may delay sustainable bottom-line profitability.';
+  } else if (lower.includes('performance bank guarantees')) {
+    heading = 'Performance guarantee liabilities';
+    summary = 'The company issues bank guarantees for potential quality defects or delivery delays.';
+    whyItMatters = 'Invocation of guarantees in project disputes triggers immediate cash liabilities and harms future bidding eligibility.';
+  } else if (lower.includes('trademarks') || lower.includes('brand name')) {
+    heading = 'Brand and trademark protection risks';
+    summary = 'Failure to protect or enforce trademarks and brand identity could harm market standing.';
+    whyItMatters = 'Unprotected intellectual property leaves the business vulnerable to brand dilution and costly litigation.';
+  } else if (lower.includes('fire protection equipment') || lower.includes('malfunction or failure')) {
+    heading = 'Mission-critical product liability risk';
+    summary = 'Malfunctions or defects in fire protection systems can cause property damage and legal liability.';
+    whyItMatters = 'Safety-critical failures expose the company to substantial damage claims and potential loss of certifications.';
+  } else if (lower.includes('management and advisory fees') || lower.includes('gp income')) {
+    heading = 'Fee dependency on managed assets and advisory';
+    summary = 'Revenue and profit depend heavily on management fees, GP income, and variable carry.';
+    whyItMatters = 'Fee income fluctuates directly with underlying asset performance and financial market sentiment.';
+  } else if (lower.includes('entirely an offer for sale') || lower.includes('offer for sale; there is no fresh issue') || (lower.includes('offer was an offer for sale') && lower.includes('not receive fresh proceeds'))) {
+    heading = '100% Offer for Sale (No fresh proceeds)';
+    summary = 'All proceeds go to selling shareholders; the issuer receives no new funds from the offer.';
+    whyItMatters = 'The IPO provides liquidity to existing shareholders but does not inject new growth capital into company balance sheets.';
+  } else if (lower.includes('tender cycles') || lower.includes('government budget')) {
+    heading = 'Uneven revenue from government tender cycles';
+    summary = 'Procurement visibility is subject to cyclical government budgets and tender schedules.';
+    whyItMatters = 'Irregular tender award schedules can cause substantial swings in quarterly revenue and working capital.';
+  } else if (lower.includes('trade restrictions') || lower.includes('sanctions') || lower.includes('export controls') || lower.includes('anti-bribery')) {
+    heading = 'Trade restrictions and sanctions compliance';
+    summary = 'Operations must comply with trade sanctions, export controls, and anti-corruption regulations.';
+    whyItMatters = 'Regulatory breaches can disqualify the company from international infrastructure projects and lead to financial penalties.';
+  } else if (lower.includes('historical growth rates may not be indicative') || lower.includes('manage our growth effectively')) {
+    heading = 'Sustainability of rapid historical growth';
+    summary = 'Past revenue and profit growth rates may not be sustained as business complexity increases.';
+    whyItMatters = 'Rapid expansion strains managerial bandwidth and operating infrastructure, risking margin compression.';
+  } else if (lower.includes('valuation methodologies') || lower.includes('values of assets may never be realized')) {
+    heading = 'Asset valuation subjectivity risk';
+    summary = 'Valuation of alternative investment assets involves subjective estimates rather than open market prices.';
+    whyItMatters = 'Carried valuations may require write-downs upon realization, reducing anticipated investor yields.';
+  } else if (lower.includes('auditor resignation') || lower.includes('appointment as cfo')) {
+    heading = 'Auditor resignation and CFO transition';
+    summary = 'A joint statutory auditor resigned and was subsequently appointed as Chief Financial Officer.';
+    whyItMatters = 'Direct transitions from independent statutory auditor to executive management require careful governance oversight.';
+  } else if (lower.includes('contingent liabilities') || lower.includes('promoter group, harbaksh')) {
+    heading = 'Contingent liabilities and legal proceedings';
+    summary = 'Disclosed contingent liabilities and litigation involving members of the promoter group.';
+    whyItMatters = 'Crystallization of contingent obligations could lead to unanticipated cash outflows and adverse publicity.';
+  } else if (lower.includes('disruption of operations at our manufacturing') || lower.includes('manufacturing facilities are subject to certain risks')) {
+    heading = 'Manufacturing facility disruption risks';
+    summary = 'Production disruptions or equipment downtime at primary plants could halt customer shipments.';
+    whyItMatters = 'Concentration of manufacturing in regional facilities magnifies vulnerability to localized disruptions.';
+  } else if (lower.includes('cyber') || lower.includes('information security') || lower.includes('data breach')) {
+    heading = 'Cybersecurity and customer data protection';
+    summary = 'Security breaches or system disruptions could compromise client data and services.';
+    whyItMatters = 'Data breaches in technology services trigger client contract penalties, regulatory fines, and reputational damage.';
+  } else if (lower.includes('attract and retain skilled employees') || lower.includes('attrition')) {
+    heading = 'Skilled talent retention and employee attrition';
+    summary = 'Business execution requires attracting and retaining specialized technical personnel.';
+    whyItMatters = 'High employee turnover increases recruitment overhead and risks delivery delays on client projects.';
+  } else if (lower.includes('loss for fy2024 and no identifiable promoter')) {
+    heading = 'Historical FY2024 loss with no identified promoter';
+    summary = 'The prospectus records a net loss for FY2024 and operates without an identifiable promoter.';
+    whyItMatters = 'Professionally managed companies without single controlling promoters require robust independent board governance.';
+  } else if (lower.includes('statutory and regulatory permits') || lower.includes('licences') || lower.includes('price regulation')) {
+    heading = 'Regulatory permits and compliance obligations';
+    summary = 'Operations depend on maintaining statutory licences, safety clearances, and pricing compliance.';
+    whyItMatters = 'Delays or failure to renew key certifications can prevent manufacturing and commercial product distribution.';
+  } else if (note.kind === 'analysis') {
+    heading = 'Editorial research review';
+    summary = cleanText;
+    whyItMatters = 'Investors should evaluate historical financial metrics alongside current offer valuation and competitive risks.';
+  } else {
+    // Algorithmic extractor for any other disclosure
+    const sentences = cleanText.split(/(?<=[.!?])\s+/);
+    heading = sentences[0].length > 58 ? sentences[0].slice(0, 55) + '...' : sentences[0];
+    summary = sentences[0];
+    whyItMatters = 'Review this documented operational disclosure to evaluate its potential impact on long-term business performance.';
+  }
+
+  return {
+    isDiscovery: false,
+    heading,
+    summary,
+    classification,
+    badgeClass,
+    verbatimText: cleanText,
+    whyItMatters,
+    sourceDoc: sourceDoc || docLabel,
+    pageRef: pageRef || 'Official disclosure',
+    sourceUrl: sourceUrl || null,
+    sourceIds: note.sourceIds,
+    observedAt: note.observedAt
+  };
+}
+
+function getVerificationSummary(ipo, notes) {
+  const discoveryNote = notes.find(n => (n.text || '').startsWith('Official NSE discovery:'));
+  const partialPreviewNote = notes.find(n => (n.text || '').startsWith('Partial research preview'));
+
+  let status = 'Reviewed';
+  let badgeClass = 'status-verified';
+  const items = [];
+
+  if (ipo.isDemo || ipo.verification === 'demo') {
+    status = 'Demonstration data';
+    badgeClass = 'status-demo';
+    items.push({ icon: 'ℹ', text: 'Illustrative figures for preview and UI testing.', type: 'info' });
+    items.push({ icon: '◷', text: 'Not backed by live regulatory filings.', type: 'pending' });
+  } else if (ipo.verification === 'reviewed') {
+    status = 'Reviewed & verified';
+    badgeClass = 'status-verified';
+    items.push({ icon: '✓', text: 'Offer terms, price band and document citations reviewed.', type: 'verified' });
+    items.push({ icon: '✓', text: 'Allotment basis and official notices confirmed against exchange records.', type: 'verified' });
+  } else if (discoveryNote) {
+    status = 'Partially verified';
+    badgeClass = 'status-partial';
+    items.push({ icon: '✓', text: 'IPO price band and dates verified with NSE.', type: 'verified' });
+    items.push({ icon: '◷', text: 'Company identity, lot size and offer-document checks pending.', type: 'pending' });
+  } else if (partialPreviewNote) {
+    status = 'Research preview';
+    badgeClass = 'status-partial';
+    items.push({ icon: '✓', text: 'Initial regulatory filing extracted.', type: 'verified' });
+    items.push({ icon: '◷', text: 'Full offer-document semantic research pending.', type: 'pending' });
+  } else if (ipo.verification === 'unverified') {
+    status = 'Verification pending';
+    badgeClass = 'status-pending';
+    items.push({ icon: '◷', text: 'Offer terms and regulatory documents pending independent verification.', type: 'pending' });
+  }
+
+  // Conflicted data flag
+  if (ipo.observations?.some(o => o.conflicted)) {
+    items.push({ icon: '⚠', text: 'Conflicting financial values observed across official sources.', type: 'warning' });
+  }
+
+  // Calculated upper band ceiling note
+  if (ipo.offerTerms?.basis === 'calculated_upper_band_ceiling') {
+    items.push({ icon: '◷', text: 'Proceeds calculated at upper band; final proceeds remain pending.', type: 'pending' });
+  }
+
+  return { status, badgeClass, items };
+}
+
+function renderEvidenceSlide(ipo, slidePanel, { el, safeLink, sourceLine, isEnrichmentNote }) {
+  slidePanel.classList.add('evidence-slide');
+
+  // A. Header: update eyebrow, ensure title and add subtitle
+  const existingEyebrow = slidePanel.querySelector('.eyebrow');
+  if (existingEyebrow) {
+    existingEyebrow.textContent = 'OFFICIAL EVIDENCE & RESEARCH';
+  } else {
+    slidePanel.append(el('p', 'OFFICIAL EVIDENCE & RESEARCH', 'eyebrow'));
+  }
+
+  const existingH4 = slidePanel.querySelector('h4');
+  const subtitle = el('p', 'Key findings from official documents and IPO research.', 'evidence-subtitle');
+  if (existingH4) {
+    existingH4.textContent = 'Evidence & risks';
+    existingH4.after(subtitle);
+  } else {
+    const h4 = el('h4', 'Evidence & risks');
+    slidePanel.append(h4, subtitle);
+  }
+
+  // Filter raw notes
+  const rawNotes = (ipo.notes || []).filter(n => !isEnrichmentNote(n));
+
+  // B. Research Verification Summary
+  const verification = getVerificationSummary(ipo, rawNotes);
+  const statusCard = el('div', undefined, 'research-status-card');
+  statusCard.setAttribute('role', 'region');
+  statusCard.setAttribute('aria-label', 'Research verification summary');
+
+  const statusHeader = el('div', undefined, 'research-status-header');
+  statusHeader.append(
+    el('span', 'RESEARCH STATUS', 'research-status-eyebrow'),
+    el('span', verification.status, 'research-status-badge ' + verification.badgeClass)
+  );
+  statusCard.append(statusHeader);
+
+  const statusList = el('ul', undefined, 'research-status-list');
+  for (const item of verification.items) {
+    const li = el('li', undefined, 'status-item status-' + item.type);
+    const icon = el('span', item.icon, 'status-icon');
+    icon.setAttribute('aria-hidden', 'true');
+    li.append(icon, el('span', item.text, 'status-text'));
+    statusList.append(li);
+  }
+  statusCard.append(statusList);
+  slidePanel.append(statusCard);
+
+  // C. Parse Findings
+  const allParsed = rawNotes.map(n => parseFinding(n, ipo));
+  const findings = allParsed.filter(p => !p.isDiscovery);
+
+  // Deduplicate findings with identical headings
+  const seenHeadings = new Set();
+  const uniqueFindings = [];
+  for (const f of findings) {
+    const key = f.heading.toLowerCase();
+    if (!seenHeadings.has(key)) {
+      seenHeadings.add(key);
+      uniqueFindings.push(f);
+    }
+  }
+
+  if (!uniqueFindings.length) {
+    const emptyNotice = el('div', undefined, 'evidence-empty-card');
+    emptyNotice.append(el('p', 'No issuer-specific risk disclosures or notes recorded for this issue.', 'value-unavailable'));
+    slidePanel.append(emptyNotice);
+  } else {
+    // Findings stack
+    const findingsStack = el('div', undefined, 'evidence-findings-stack');
+    const initialFindings = uniqueFindings.slice(0, 3);
+    const extraFindings = uniqueFindings.slice(3);
+
+    const renderFindingCard = (finding, index) => {
+      const card = el('article', undefined, 'finding-card ' + finding.badgeClass);
+      
+      const cardHeader = el('div', undefined, 'finding-card-header');
+      cardHeader.append(
+        el('span', finding.classification, 'finding-badge ' + finding.badgeClass),
+        el('h5', finding.heading, 'finding-title')
+      );
+      
+      const summary = el('p', finding.summary, 'finding-summary');
+
+      // Expandable details for "Why it matters" and verbatim evidence
+      const details = el('details', undefined, 'finding-expandable');
+      const summaryTrigger = el('summary', undefined, 'finding-expand-trigger');
+      summaryTrigger.setAttribute('aria-label', `Why it matters and original disclosure for ${finding.heading}`);
+      summaryTrigger.append(
+        el('span', 'Why it matters & evidence', 'expand-label'),
+        el('span', '▾', 'expand-chevron')
+      );
+
+      const expandedBody = el('div', undefined, 'finding-expanded-content');
+
+      // Why it matters
+      const whyBox = el('div', undefined, 'why-it-matters-box');
+      whyBox.append(
+        el('strong', 'Why it matters: ', 'why-title'),
+        el('span', finding.whyItMatters, 'why-text')
+      );
+
+      // Verbatim disclosure quote
+      const quoteBox = el('div', undefined, 'verbatim-quote-box');
+      quoteBox.append(
+        el('span', 'Original disclosure:', 'verbatim-label'),
+        el('blockquote', `"${finding.verbatimText}"`, 'verbatim-quote')
+      );
+
+      // Citation & document link row
+      const citationRow = el('div', undefined, 'finding-citation-row');
+      citationRow.append(el('span', `Source: ${finding.sourceDoc}, ${finding.pageRef}.`, 'citation-doc'));
+
+      if (finding.sourceUrl) {
+        citationRow.append(safeLink(finding.sourceDoc, finding.sourceUrl));
+      }
+
+      expandedBody.append(whyBox, quoteBox, citationRow);
+      details.append(summaryTrigger, expandedBody);
+
+      card.append(cardHeader, summary, details);
+      return card;
+    };
+
+    // Render initial 3 findings
+    initialFindings.forEach((f, i) => findingsStack.append(renderFindingCard(f, i)));
+
+    // D. Extra findings container & toggle button (if > 3)
+    if (extraFindings.length > 0) {
+      const extraContainer = el('div', undefined, 'extra-findings-container');
+      extraContainer.hidden = true;
+      extraFindings.forEach((f, i) => extraContainer.append(renderFindingCard(f, i + 3)));
+
+      const toggleBtn = el('button', `Show all findings (${uniqueFindings.length})`, 'show-all-findings-btn');
+      toggleBtn.type = 'button';
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.setAttribute('aria-label', `Show all ${uniqueFindings.length} findings for ${ipo.issuer}`);
+
+      toggleBtn.onclick = () => {
+        const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(8); } catch {}
+        }
+        if (isExpanded) {
+          extraContainer.hidden = true;
+          toggleBtn.setAttribute('aria-expanded', 'false');
+          toggleBtn.textContent = `Show all findings (${uniqueFindings.length})`;
+        } else {
+          extraContainer.hidden = false;
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          toggleBtn.textContent = `Show fewer findings (3 of ${uniqueFindings.length})`;
+        }
+      };
+
+      findingsStack.append(extraContainer, toggleBtn);
+    }
+
+    slidePanel.append(findingsStack);
+  }
+
+  // E. Official Documents Bar (quick chips)
+  const docsBar = el('div', undefined, 'evidence-documents-bar');
+  docsBar.setAttribute('aria-label', 'Official offer and company documents');
+  docsBar.append(el('span', 'Official documents:', 'docs-label'));
+
+  const chipsGroup = el('div', undefined, 'docs-chips-group');
+  if (ipo.companyWebsite) {
+    const webLink = safeLink('Company website', ipo.companyWebsite);
+    webLink.classList.add('doc-chip');
+    chipsGroup.append(webLink);
+  }
+  if (ipo.documents && ipo.documents.length) {
+    for (const doc of ipo.documents) {
+      const docLink = safeLink(doc.label, doc.url);
+      docLink.classList.add('doc-chip');
+      chipsGroup.append(docLink);
+    }
+  }
+  if (!ipo.companyWebsite && (!ipo.documents || !ipo.documents.length)) {
+    chipsGroup.append(el('span', 'Offer documents & registrar: Unavailable', 'value-unavailable'));
+  }
+  docsBar.append(chipsGroup);
+  slidePanel.append(docsBar);
+}
+
+return {parseFinding,getVerificationSummary,renderEvidenceSlide};})();
+modules["src/components/business-view.js"]=(()=>{// Business & people view: transforms raw issuer prose and promoter lists into a
+// structured, mobile-first company research experience for retail IPO investors.
+
+function formatPromoterName(raw) {
+  if (!raw) return '';
+  // Clean up any trailing offer structure text that might coexist in raw records (e.g. SFC Environmental)
+  let clean = raw.replace(/\s+DETAILS OF OFFER.*$/i, '').trim();
+  clean = clean.replace(/\s+Offer for Sale.*$/i, '').trim();
+  clean = clean.replace(/\s+Fresh Issue.*$/i, '').trim();
+
+  // If already mixed case (e.g. 'Ankit Kumar', 'María José...'), keep as is
+  if (/[a-z]/.test(clean) && /[A-Z]/.test(clean) && !/^[A-Z\s.,'-]+$/.test(clean)) {
+    return clean;
+  }
+
+  // Proper Title Case formatting
+  return clean
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => {
+      if (['and', '&', 'of', 'in'].includes(w)) return w;
+      if (w.startsWith('(') && w.length > 1) {
+        return '(' + w.charAt(1).toUpperCase() + w.slice(2);
+      }
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+}
+
+function getPromoterInitials(name) {
+  const isCorp = /limited|corporation|llp|pvt|holdings|company|trust/i.test(name);
+  if (isCorp) return '🏢';
+  const clean = name.replace(/^(?:dr\.|mr\.|mrs\.|ms\.)\s+/i, '');
+  const parts = clean.replace(/[^a-zA-Z\s]/g, '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'P';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function extractPromoterRole(name, ipo) {
+  const notes = (ipo.notes || []).filter(n => (n.text || '').includes('Promoter background'));
+  const cleanName = formatPromoterName(name).toLowerCase();
+  const nameParts = cleanName.split(' ').filter(p => !['dr.', 'mr.', 'mrs.'].includes(p));
+  const firstWord = nameParts[0] || '';
+  const lastWord = nameParts[nameParts.length - 1] || '';
+
+  for (const n of notes) {
+    const text = n.text.replace('Promoter background · ', '');
+    const textLower = text.toLowerCase();
+
+    const matchesName = textLower.includes(cleanName) ||
+      (firstWord.length > 2 && textLower.includes(firstWord) && lastWord.length > 2 && textLower.includes(lastWord));
+
+    if (matchesName) {
+      const roleMatch = text.match(/(?:is\s+(?:(?:a|the)\s+)?(?:Promoter\s+and\s+)?(?:the|a|an)?\s*)(Chairman\s+and\s+Managing\s+Director|Managing\s+Director\s+and\s+Chief\s+Executive\s+Officer|Executive\s+Director\s+and\s+Chief\s+Business\s+and\s+Revenue\s+Officer|Whole\s*-\s*time\s+Director|Whole\s+time\s+Director|Executive\s+Director|Managing\s+Director|Director)/i);
+      if (roleMatch) {
+        return roleMatch[1]
+          .replace(/Whole\s*-\s*time/i, 'Whole-Time')
+          .replace(/Whole\s+time/i, 'Whole-Time')
+          .replace(/and/g, '&');
+      }
+    }
+  }
+
+  // Check if corporate entity
+  if (/limited|corporation|llp|pvt|holdings|trust/i.test(name)) {
+    return 'Corporate Promoter';
+  }
+
+  return null;
+}
+
+function getPromoterExperience(name, ipo) {
+  const notes = (ipo.notes || []).filter(n => (n.text || '').includes('Promoter background'));
+  const cleanName = formatPromoterName(name).toLowerCase();
+  const nameParts = cleanName.split(' ').filter(p => !['dr.', 'mr.', 'mrs.'].includes(p));
+  const firstWord = nameParts[0] || '';
+  const lastWord = nameParts[nameParts.length - 1] || '';
+
+  for (const n of notes) {
+    const text = n.text.replace('Promoter background · ', '').trim();
+    const textLower = text.toLowerCase();
+
+    const matchesName = textLower.includes(cleanName) ||
+      (firstWord.length > 2 && textLower.includes(firstWord) && lastWord.length > 2 && textLower.includes(lastWord));
+
+    if (matchesName) {
+      let pageRef = null;
+      let cleanText = text;
+      const citeMatch = text.match(/\((Offer document|RHP|DRHP|Prospectus)\s*(?:p\.|page)?\s*(\d+)\)\.?$/i);
+      if (citeMatch) {
+        pageRef = `${citeMatch[1]} p. ${citeMatch[2]}`;
+        cleanText = text.replace(citeMatch[0], '').trim();
+      }
+
+      // Find matching document URL
+      let sourceUrl = null;
+      if (ipo.documents && ipo.documents.length) {
+        const doc = ipo.documents.find(d => /rhp|offer|prospectus/i.test(d.label || '') || /rhp|offer|prospectus/i.test(d.url || ''));
+        if (doc) sourceUrl = doc.url;
+      }
+
+      return {
+        bioText: cleanText,
+        pageRef: pageRef || 'Offer document citation',
+        sourceUrl,
+        sourceIds: n.sourceIds,
+        observedAt: n.observedAt
+      };
+    }
+  }
+
+  return null;
+}
+
+function getReportedBusinessDetails(ipo) {
+  const rawDesc = (ipo.business || '').trim();
+  const isUnavailable = !rawDesc || rawDesc.toLowerCase() === 'unavailable' || rawDesc.toLowerCase() === 'null';
+
+  if (isUnavailable) {
+    return {
+      overview: 'Business description is not available from the current official filings.',
+      glance: [],
+      reportedActivity: null,
+      rawDesc: null
+    };
+  }
+
+  // 1. Transform raw text into objective, neutral third-person overview
+  let overview = rawDesc;
+  if (/^we are\s+(?:a|an)\s+/i.test(overview)) {
+    overview = overview.replace(/^we are\s+(?:a|an)\s+/i, 'The company is a ');
+  } else if (/^we are\s+/i.test(overview)) {
+    overview = overview.replace(/^we are\s+/i, 'The company is ');
+  } else if (/^we operate\s+/i.test(overview)) {
+    overview = overview.replace(/^we operate\s+/i, 'The company operates ');
+  } else if (/^we provide\s+/i.test(overview)) {
+    overview = overview.replace(/^we provide\s+/i, 'The company provides ');
+  } else if (!/^(the company|designs|manufactures|operates|provides)/i.test(overview)) {
+    overview = 'The company is engaged in ' + overview.charAt(0).toLowerCase() + overview.slice(1);
+  }
+
+  // Clean common formatting & OCR quirks
+  overview = overview
+    .replace(/\s+-\s*|\s*-\s+/g, '-')
+    .replace(/“\s+/g, '"')
+    .replace(/\s+”/g, '"')
+    .replace(/one of the leading/gi, 'an established')
+    .replace(/\s+\(\s*source:[^)]+\)/gi, '')
+    .trim();
+
+  // 2. Extract Business at a Glance fields
+  const glance = [];
+  const lower = rawDesc.toLowerCase();
+
+  // Activity
+  let activity = null;
+  if (lower.includes('jewellery') || lower.includes('gold, diamond')) activity = 'Jewellery retail';
+  else if (lower.includes('electro-optical') || lower.includes('surveillance, reconnaissance')) activity = 'Defence electro-optics';
+  else if (lower.includes('hospital') || lower.includes('healthcare services')) activity = 'Healthcare & hospital operations';
+  else if (lower.includes('wastewater') || lower.includes('solid waste')) activity = 'Environmental engineering';
+  else if (lower.includes('alternatives') || lower.includes('aum')) activity = 'Alternative asset management';
+  else if (lower.includes('passenger vehicles')) activity = 'Automobile manufacturing';
+  else if (lower.includes('food delivery')) activity = 'Food delivery & quick commerce';
+  else if (lower.includes('housing finance') || lower.includes('mortgage')) activity = 'Housing finance (NBFC)';
+  else if (lower.includes('fire fighting') || lower.includes('fire protection')) activity = 'Fire protection systems';
+  else if (lower.includes('manufacturing services') || lower.includes('precision')) activity = 'Contract manufacturing';
+  else if (ipo.sector && ipo.sector !== 'null' && ipo.sector.toLowerCase() !== 'unavailable') activity = ipo.sector;
+
+  if (activity) glance.push({ label: 'Activity', value: activity });
+
+  // Main Products / Services
+  let products = null;
+  if (lower.includes('gold, diamond and cubic zirconia')) products = 'Gold, diamond & CZ jewellery';
+  else if (lower.includes('electro-optical and infrared sensing')) products = 'Infrared sensing & targeting systems';
+  else if (lower.includes('tertiary and quaternary healthcare')) products = 'Tertiary & quaternary hospital care';
+  else if (lower.includes('wastewater treatment') && lower.includes('recycling')) products = 'Wastewater recycling & solid waste systems';
+  else if (lower.includes('managing long term patient capital')) products = 'Alternative private asset funds';
+  else if (lower.includes('passenger vehicles')) products = 'Passenger cars & utility vehicles';
+  else if (lower.includes('food delivery, quick commerce')) products = 'Food delivery & quick commerce';
+  else if (lower.includes('mortgage lending products')) products = 'Home mortgages & property lending';
+
+  if (products) glance.push({ label: 'Offerings', value: products });
+
+  // Channel / Model / Scale
+  let channel = null;
+  if (lower.includes('retail showrooms')) channel = 'Company-owned showroom chain';
+  else if (lower.includes('network of eight hospitals') || lower.includes('2,211 beds')) channel = '8 hospitals · 2,211 bed capacity';
+  else if (lower.includes('defence and security customers')) channel = 'Direct defence & security tenders';
+  else if (lower.includes('engineering solutions in the field')) channel = 'Turnkey EPC & engineering projects';
+  else if (lower.includes('platform')) channel = 'Digital consumer marketplace';
+  else if (lower.includes('own chain')) channel = 'Direct retail chain';
+
+  if (channel) glance.push({ label: 'Model', value: channel });
+
+  // Operating History
+  let history = null;
+  const sinceMatch = rawDesc.match(/since\s+(\d{4})/i);
+  const yearsMatch = rawDesc.match(/(\d+)\+?\s+years\s+(?:of\s+experience|of\s+operations)/i);
+  if (sinceMatch) history = `Operating since ${sinceMatch[1]}`;
+  else if (yearsMatch) history = `${yearsMatch[1]}+ years track record`;
+
+  if (history) glance.push({ label: 'Track record', value: history });
+
+  return { overview, glance, reportedActivity: activity, rawDesc };
+}
+
+function renderBusinessSlide(ipo, slidePanel, { el, safeLink, sourceLine, isEnrichmentNote }) {
+  slidePanel.classList.add('business-slide');
+
+  // A. Header: ensure eyebrow, title and subtitle
+  const existingEyebrow = slidePanel.querySelector('.eyebrow');
+  if (existingEyebrow) {
+    existingEyebrow.textContent = 'COMPANY & LEADERSHIP';
+  } else {
+    slidePanel.append(el('p', 'COMPANY & LEADERSHIP', 'eyebrow'));
+  }
+
+  const existingH4 = slidePanel.querySelector('h4');
+  const subtitle = el('p', 'Know the company behind the IPO.', 'business-subtitle');
+  if (existingH4) {
+    existingH4.textContent = 'Business & people';
+    existingH4.after(subtitle);
+  } else {
+    const h4 = el('h4', 'Business & people');
+    slidePanel.append(h4, subtitle);
+  }
+
+  const businessData = getReportedBusinessDetails(ipo);
+
+  // B. Company Overview Card
+  const overviewCard = el('div', undefined, 'business-overview-card');
+  overviewCard.setAttribute('role', 'region');
+  overviewCard.setAttribute('aria-label', 'Company overview');
+
+  const overviewText = el('p', businessData.overview, 'company-overview-text');
+  overviewCard.append(overviewText);
+
+  // If raw description exists and is longer than transformed overview, provide optional expandable verbatim quote
+  if (businessData.rawDesc && businessData.rawDesc.length > 80) {
+    const originalDetails = el('details', undefined, 'original-business-details');
+    const origSummary = el('summary', undefined, 'original-business-trigger');
+    origSummary.append(
+      el('span', 'Original filing description', 'orig-label'),
+      el('span', '▾', 'orig-chevron')
+    );
+    const origContent = el('div', undefined, 'original-business-content');
+    origContent.append(el('blockquote', `"${businessData.rawDesc}"`, 'original-quote'));
+    originalDetails.append(origSummary, origContent);
+    overviewCard.append(originalDetails);
+  }
+  slidePanel.append(overviewCard);
+
+  // C. Business at a Glance Grid
+  if (businessData.glance.length > 0) {
+    const glanceSection = el('div', undefined, 'business-glance-grid');
+    glanceSection.setAttribute('aria-label', 'Business at a glance');
+
+    for (const item of businessData.glance) {
+      const tile = el('div', undefined, 'glance-tile');
+      tile.append(
+        el('span', item.label, 'glance-label'),
+        el('strong', item.value, 'glance-value')
+      );
+      glanceSection.append(tile);
+    }
+
+    // Add Sector / Classification status tile
+    const sectorTile = el('div', undefined, 'glance-tile');
+    const hasOfficialSector = ipo.sector && ipo.sector !== 'null' && ipo.sector.toLowerCase() !== 'unavailable';
+    sectorTile.append(
+      el('span', 'Official sector', 'glance-label'),
+      el('strong', hasOfficialSector ? ipo.sector : 'Pending exchange classification', hasOfficialSector ? 'glance-value' : 'glance-value text-muted')
+    );
+    glanceSection.append(sectorTile);
+
+    slidePanel.append(glanceSection);
+  }
+
+  // D. Who are the Promoters?
+  const promoterSection = el('section', undefined, 'promoters-section');
+  promoterSection.setAttribute('aria-label', 'Company promoters');
+
+  const promoterHeading = el('div', undefined, 'promoters-heading-row');
+  promoterHeading.append(
+    el('h5', 'Who are the promoters?', 'promoters-heading'),
+    el('span', ipo.promoters?.length ? `${ipo.promoters.length} Disclosed` : 'None identified', 'promoters-count-badge')
+  );
+  promoterSection.append(promoterHeading);
+
+  const rawPromoters = ipo.promoters || [];
+
+  if (!rawPromoters.length) {
+    const emptyPromoters = el('div', undefined, 'promoter-empty-card');
+    emptyPromoters.append(
+      el('p', 'Professionally managed company with no identified promoter (as disclosed in official filings).', 'promoter-empty-text')
+    );
+    promoterSection.append(emptyPromoters);
+  } else {
+    const promotersList = el('div', undefined, 'promoters-list');
+
+    // De-duplicate promoter list and clean up any dirty offer prose
+    const seenNames = new Set();
+    const cleanPromoters = [];
+    for (const p of rawPromoters) {
+      const name = formatPromoterName(p);
+      if (name && !seenNames.has(name.toLowerCase()) && name.length <= 60) {
+        seenNames.add(name.toLowerCase());
+        cleanPromoters.push({ raw: p, formatted: name });
+      }
+    }
+
+    for (const { raw, formatted } of cleanPromoters) {
+      const row = el('div', undefined, 'promoter-row');
+      const initials = getPromoterInitials(formatted);
+      const role = extractPromoterRole(raw, ipo);
+      const experience = getPromoterExperience(raw, ipo);
+
+      const avatar = el('div', initials, 'promoter-avatar');
+      avatar.setAttribute('aria-hidden', 'true');
+
+      const meta = el('div', undefined, 'promoter-meta');
+      const nameLine = el('div', undefined, 'promoter-name-line');
+      nameLine.append(el('strong', formatted, 'promoter-name'));
+
+      if (role) {
+        nameLine.append(el('span', role, 'promoter-role-badge'));
+      }
+      meta.append(nameLine);
+
+      // If verified background/experience details exist, provide expandable card
+      if (experience) {
+        const bioDetails = el('details', undefined, 'promoter-bio-expandable');
+        const bioTrigger = el('summary', undefined, 'promoter-bio-trigger');
+        bioTrigger.setAttribute('aria-label', `Experience & background for ${formatted}`);
+        bioTrigger.append(
+          el('span', 'Experience & details', 'bio-label'),
+          el('span', '▾', 'bio-chevron')
+        );
+
+        const bioContent = el('div', undefined, 'promoter-bio-content');
+        bioContent.append(el('p', experience.bioText, 'promoter-bio-text'));
+
+        const citeRow = el('div', undefined, 'promoter-cite-row');
+        citeRow.append(el('span', `Source: ${experience.pageRef}`, 'promoter-cite-text'));
+        if (experience.sourceUrl) {
+          citeRow.append(safeLink('View filing', experience.sourceUrl));
+        }
+        bioContent.append(citeRow);
+
+        bioDetails.append(bioTrigger, bioContent);
+        meta.append(bioDetails);
+      }
+
+      row.append(avatar, meta);
+      promotersList.append(row);
+    }
+
+    promoterSection.append(promotersList);
+  }
+
+  slidePanel.append(promoterSection);
+
+  // E. Disclosed Promoter Awards (if present)
+  const awards = (ipo.notes || []).filter(n => (n.text || '').startsWith('Disclosed promoter award · '));
+  if (awards.length) {
+    const awardsCard = el('div', undefined, 'promoter-awards-card');
+    awardsCard.append(el('span', 'DISCLOSED PROMOTER AWARDS', 'awards-eyebrow'));
+    for (const award of awards) {
+      awardsCard.append(
+        el('p', award.text.replace('Disclosed promoter award · ', ''), 'award-text'),
+        sourceLine(ipo, award.sourceIds, award.observedAt)
+      );
+    }
+    slidePanel.append(awardsCard);
+  }
+
+  // F. Research Status / Coverage Notice
+  const hasProfiles = (ipo.notes || []).some(n => (n.text || '').startsWith('Promoter background · '));
+  const coverageNotes = (ipo.notes || []).filter(n => (n.text || '').startsWith('Enrichment coverage · '));
+
+  if (!hasProfiles || coverageNotes.length) {
+    const noticeCard = el('div', undefined, 'promoter-research-notice');
+    const noticeIcon = el('span', 'ℹ', 'notice-icon');
+    noticeIcon.setAttribute('aria-hidden', 'true');
+
+    const noticeBody = el('div', undefined, 'notice-body');
+    if (!hasProfiles) {
+      noticeBody.append(
+        el('strong', 'Further promoter background has not yet been reviewed.', 'notice-title'),
+        el('p', 'Professional experience, business associations and additional milestones are not yet covered by this research.', 'notice-text')
+      );
+    } else {
+      noticeBody.append(
+        el('strong', 'Additional promoter details pending review.', 'notice-title'),
+        el('p', 'Professional milestones and secondary associations remain unassessed in this dataset.', 'notice-text')
+      );
+    }
+    noticeCard.append(noticeIcon, noticeBody);
+    slidePanel.append(noticeCard);
+  }
+
+  // Source line
+  const freshnessAt = ipo.sources?.[0]?.observedAt || ipo.updatedAt;
+  slidePanel.append(sourceLine(ipo, ipo.sourceIds, freshnessAt));
+}
+
+return {formatPromoterName,getPromoterInitials,extractPromoterRole,getPromoterExperience,getReportedBusinessDetails,renderBusinessSlide};})();
+modules["src/components/performance-view.js"]=(()=>{// Performance view: transforms raw financial observations into an intuitive,
+// mobile-first financial performance experience for retail IPO investors.
+const { financialPeriod, financialValue }=modules["src/domain/financial-story.js"];
+
+/**
+ * Maps financial period codes (e.g. Q1FY2027, FY2026, H1CY2026) to clear calendar date ranges
+ * alongside their financial-year labels.
+ */
+function formatFinancialPeriod(period = '') {
+  if (typeof period !== 'string' || !period) {
+    return {
+      code: '',
+      calendar: '',
+      label: 'Period unavailable',
+      shortLabel: 'Unavailable',
+      type: 'unknown',
+      order: 0,
+      annual: false
+    };
+  }
+
+  const base = financialPeriod(period);
+  const clean = period.trim();
+
+  // 1. Quarterly / Half-yearly Fiscal Year (e.g. Q1FY2027, H1FY2026)
+  const qhFyMatch = clean.match(/^(Q[1-4]|H[12])FY(\d{4})$/i);
+  if (qhFyMatch) {
+    const part = qhFyMatch[1].toUpperCase();
+    const fyYear = Number(qhFyMatch[2]);
+    const shortFy = `'${String(fyYear).slice(-2)}`;
+    const startYear = fyYear - 1;
+
+    let calendar = '';
+    if (part === 'Q1') calendar = `Apr–Jun ${startYear}`;
+    else if (part === 'Q2') calendar = `Jul–Sep ${startYear}`;
+    else if (part === 'Q3') calendar = `Oct–Dec ${startYear}`;
+    else if (part === 'Q4') calendar = `Jan–Mar ${fyYear}`;
+    else if (part === 'H1') calendar = `Apr–Sep ${startYear}`;
+    else if (part === 'H2') calendar = `Oct ${startYear}–Mar ${fyYear}`;
+
+    return {
+      code: `${part} FY${String(fyYear).slice(-2)}`,
+      calendar,
+      label: `${calendar} (${part} FY${String(fyYear).slice(-2)})`,
+      shortLabel: `${part} FY${String(fyYear).slice(-2)}`,
+      type: part.startsWith('Q') ? 'quarterly' : 'half_yearly',
+      order: base.order,
+      annual: false
+    };
+  }
+
+  // 2. Annual Fiscal Year (e.g. FY2026)
+  const fyMatch = clean.match(/^FY(\d{4})$/i);
+  if (fyMatch) {
+    const fyYear = Number(fyMatch[1]);
+    const startYear = fyYear - 1;
+    const calendar = `Apr ${startYear}–Mar ${fyYear}`;
+    const shortCode = `FY${String(fyYear).slice(-2)}`;
+    return {
+      code: shortCode,
+      calendar,
+      label: `${calendar} (${shortCode})`,
+      shortLabel: shortCode,
+      type: 'annual',
+      order: base.order,
+      annual: true
+    };
+  }
+
+  // 3. Calendar Year Half-yearly / Quarterly (e.g. H1CY2026)
+  const qhCyMatch = clean.match(/^(Q[1-4]|H[12])CY(\d{4})$/i);
+  if (qhCyMatch) {
+    const part = qhCyMatch[1].toUpperCase();
+    const cyYear = Number(qhCyMatch[2]);
+    const shortCode = `${part} CY${String(cyYear).slice(-2)}`;
+
+    let calendar = '';
+    if (part === 'Q1') calendar = `Jan–Mar ${cyYear}`;
+    else if (part === 'Q2') calendar = `Apr–Jun ${cyYear}`;
+    else if (part === 'Q3') calendar = `Jul–Sep ${cyYear}`;
+    else if (part === 'Q4') calendar = `Oct–Dec ${cyYear}`;
+    else if (part === 'H1') calendar = `Jan–Jun ${cyYear}`;
+    else if (part === 'H2') calendar = `Jul–Dec ${cyYear}`;
+
+    return {
+      code: shortCode,
+      calendar,
+      label: `${calendar} (${shortCode})`,
+      shortLabel: shortCode,
+      type: part.startsWith('Q') ? 'quarterly' : 'half_yearly',
+      order: base.order,
+      annual: false
+    };
+  }
+
+  // 4. Annual Calendar Year (e.g. CY2025)
+  const cyMatch = clean.match(/^CY(\d{4})$/i);
+  if (cyMatch) {
+    const cyYear = Number(cyMatch[1]);
+    const shortCode = `CY${String(cyYear).slice(-2)}`;
+    const calendar = `Jan–Dec ${cyYear}`;
+    return {
+      code: shortCode,
+      calendar,
+      label: `${calendar} (${shortCode})`,
+      shortLabel: shortCode,
+      type: 'annual',
+      order: base.order,
+      annual: true
+    };
+  }
+
+  // 5. As-of Date (e.g. ASOF2026-06-30)
+  const asofMatch = clean.match(/^ASOF(\d{4})-(\d{2})-(\d{2})$/i);
+  if (asofMatch) {
+    const d = new Date(Date.UTC(Number(asofMatch[1]), Number(asofMatch[2]) - 1, Number(asofMatch[3])));
+    const formatted = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' }).format(d);
+    return {
+      code: `As of ${formatted}`,
+      calendar: formatted,
+      label: `As of ${formatted}`,
+      shortLabel: formatted,
+      type: 'point_in_time',
+      order: base.order,
+      annual: false
+    };
+  }
+
+  return {
+    code: base.label,
+    calendar: '',
+    label: base.label,
+    shortLabel: base.label,
+    type: 'custom',
+    order: base.order,
+    annual: base.annual
+  };
+}
+
+/**
+ * Analyzes profitability transitions between two comparable financial periods.
+ * Strictly prevents misleading percentage growth calculations on non-positive baselines.
+ */
+function analyzeProfitability(currentObs, priorObs) {
+  const curr = currentObs && Number.isFinite(currentObs.value) ? currentObs.value : null;
+  const prev = priorObs && Number.isFinite(priorObs.value) ? priorObs.value : null;
+
+  if (curr === null) {
+    return {
+      status: 'unavailable',
+      badge: 'Unavailable',
+      badgeType: 'neutral',
+      explanation: 'Net profit figures are not available for this period.',
+      isProfitable: false,
+      isLoss: false,
+      swingCr: null,
+      growthPct: null
+    };
+  }
+
+  const currPeriod = formatFinancialPeriod(currentObs?.period);
+
+  // Single period (no prior comparison)
+  if (prev === null) {
+    if (curr > 0) {
+      return {
+        status: 'profitable',
+        badge: 'Profitable',
+        badgeType: 'positive',
+        explanation: `Reported net profit of ₹${curr.toFixed(2)} cr for ${currPeriod.shortLabel}; prior comparable period not available.`,
+        isProfitable: true,
+        isLoss: false,
+        swingCr: null,
+        growthPct: null
+      };
+    } else if (curr < 0) {
+      return {
+        status: 'loss_making',
+        badge: 'Net loss',
+        badgeType: 'negative',
+        explanation: `Reported net loss of -₹${Math.abs(curr).toFixed(2)} cr for ${currPeriod.shortLabel}; prior comparable period not available.`,
+        isProfitable: false,
+        isLoss: true,
+        swingCr: null,
+        growthPct: null
+      };
+    } else {
+      return {
+        status: 'breakeven',
+        badge: 'Breakeven',
+        badgeType: 'neutral',
+        explanation: `Reported breakeven earnings (₹0 cr) for ${currPeriod.shortLabel}.`,
+        isProfitable: false,
+        isLoss: false,
+        swingCr: null,
+        growthPct: null
+      };
+    }
+  }
+
+  // Dual period comparisons
+  const swing = curr - prev;
+
+  // 1. Loss to Profit (Turnaround)
+  if (prev < 0 && curr > 0) {
+    return {
+      status: 'turned_profitable',
+      badge: 'Turned profitable',
+      badgeType: 'positive',
+      explanation: 'The company reported a net profit compared with a net loss in the corresponding period last year.',
+      isProfitable: true,
+      isLoss: false,
+      swingCr: swing,
+      growthPct: null // Percentage growth is mathematically undefined on negative baseline
+    };
+  }
+
+  // 2. Profit to Loss (Turnaround negative)
+  if (prev > 0 && curr < 0) {
+    return {
+      status: 'turned_loss_making',
+      badge: 'Turned loss-making',
+      badgeType: 'negative',
+      explanation: 'The company reported a net loss compared with a net profit in the corresponding period last year.',
+      isProfitable: false,
+      isLoss: true,
+      swingCr: swing,
+      growthPct: null
+    };
+  }
+
+  // 3. Loss to Loss
+  if (prev < 0 && curr < 0) {
+    if (curr > prev) {
+      return {
+        status: 'loss_narrowed',
+        badge: 'Loss narrowed',
+        badgeType: 'improved',
+        explanation: `Net loss reduced by ₹${swing.toFixed(2)} cr compared with the prior period.`,
+        isProfitable: false,
+        isLoss: true,
+        swingCr: swing,
+        growthPct: null
+      };
+    } else if (curr < prev) {
+      return {
+        status: 'loss_widened',
+        badge: 'Loss widened',
+        badgeType: 'negative',
+        explanation: `Net loss increased by ₹${Math.abs(swing).toFixed(2)} cr compared with the prior period.`,
+        isProfitable: false,
+        isLoss: true,
+        swingCr: swing,
+        growthPct: null
+      };
+    } else {
+      return {
+        status: 'loss_unchanged',
+        badge: 'Loss unchanged',
+        badgeType: 'neutral',
+        explanation: 'Net loss was identical to the prior period.',
+        isProfitable: false,
+        isLoss: true,
+        swingCr: 0,
+        growthPct: null
+      };
+    }
+  }
+
+  // 4. Zero Baseline Transitions
+  if (prev === 0) {
+    if (curr > 0) {
+      return {
+        status: 'turned_profitable',
+        badge: 'Turned profitable',
+        badgeType: 'positive',
+        explanation: 'The company reported a net profit from a breakeven baseline last year.',
+        isProfitable: true,
+        isLoss: false,
+        swingCr: curr,
+        growthPct: null
+      };
+    } else if (curr < 0) {
+      return {
+        status: 'turned_loss_making',
+        badge: 'Turned loss-making',
+        badgeType: 'negative',
+        explanation: 'The company reported a net loss from a breakeven baseline last year.',
+        isProfitable: false,
+        isLoss: true,
+        swingCr: curr,
+        growthPct: null
+      };
+    } else {
+      return {
+        status: 'breakeven',
+        badge: 'Breakeven',
+        badgeType: 'neutral',
+        explanation: 'Reported breakeven earnings in both comparable periods.',
+        isProfitable: false,
+        isLoss: false,
+        swingCr: 0,
+        growthPct: null
+      };
+    }
+  }
+
+  // 5. Positive to Positive (Mathematically valid percentage growth)
+  const growthPct = (swing / prev) * 100;
+  if (growthPct >= 0) {
+    return {
+      status: 'profit_growth',
+      badge: `▲ +${growthPct.toFixed(1)}% YoY`,
+      badgeType: 'positive',
+      explanation: `Net profit grew by ${growthPct.toFixed(1)}% compared with the corresponding period last year.`,
+      isProfitable: true,
+      isLoss: false,
+      swingCr: swing,
+      growthPct
+    };
+  } else {
+    return {
+      status: 'profit_decline',
+      badge: `▼ ${Math.abs(growthPct).toFixed(1)}% YoY`,
+      badgeType: 'negative',
+      explanation: `Net profit declined by ${Math.abs(growthPct).toFixed(1)}% compared with the corresponding period last year.`,
+      isProfitable: true,
+      isLoss: false,
+      swingCr: swing,
+      growthPct
+    };
+  }
+}
+
+/**
+ * Analyzes revenue / sales growth between comparable periods.
+ */
+function analyzeRevenue(currentObs, priorObs) {
+  const curr = currentObs && Number.isFinite(currentObs.value) ? currentObs.value : null;
+  const prev = priorObs && Number.isFinite(priorObs.value) ? priorObs.value : null;
+
+  if (curr === null) {
+    return {
+      status: 'unavailable',
+      badge: null,
+      badgeType: 'neutral',
+      explanation: 'Revenue figures are not available for this period.',
+      growthPct: null,
+      isGrowth: false,
+      diffCr: null
+    };
+  }
+
+  const currPeriod = formatFinancialPeriod(currentObs?.period);
+  const prevPeriod = formatFinancialPeriod(priorObs?.period);
+
+  if (prev === null || prev <= 0) {
+    return {
+      status: 'standalone',
+      badge: null,
+      badgeType: 'neutral',
+      explanation: `Reported sales of ₹${curr.toFixed(2)} cr for ${currPeriod.shortLabel}; prior comparable period not available.`,
+      growthPct: null,
+      isGrowth: false,
+      diffCr: null
+    };
+  }
+
+  const diff = curr - prev;
+  const growthPct = (diff / prev) * 100;
+  const isGrowth = growthPct >= 0;
+
+  return {
+    status: isGrowth ? 'growth' : 'decline',
+    badge: `${isGrowth ? '▲ +' : '▼ '}${Math.abs(growthPct).toFixed(1)}% YoY`,
+    badgeType: isGrowth ? 'positive' : 'negative',
+    explanation: `Revenue ${isGrowth ? 'increased' : 'declined'} by ₹${Math.abs(diff).toFixed(2)} cr (${isGrowth ? '+' : ''}${growthPct.toFixed(1)}%) compared with ${prevPeriod.shortLabel}.`,
+    growthPct,
+    isGrowth,
+    diffCr: diff
+  };
+}
+
+/**
+ * Calculates net profit margin when revenue and profit are from the same period
+ * and revenue is a positive denominator.
+ */
+function calculateProfitMargin(revenueObs, profitObs) {
+  if (!revenueObs || !profitObs) return null;
+  const rev = revenueObs.value;
+  const pat = profitObs.value;
+  if (!Number.isFinite(rev) || !Number.isFinite(pat) || rev <= 0) return null;
+  if (revenueObs.period !== profitObs.period) return null;
+
+  const marginPct = (pat / rev) * 100;
+  return {
+    marginPct,
+    formatted: `${marginPct.toFixed(1)}%`,
+    isPositive: marginPct >= 0
+  };
+}
+
+/**
+ * Synthesizes revenue and profitability results into a factual "What this means" insight.
+ */
+function generateFinancialInsight({ revAnalysis, profitAnalysis, margin, recentObs }) {
+  if (revAnalysis.status === 'unavailable' && profitAnalysis.status === 'unavailable') {
+    return 'Financial performance information is not available from current official filings.';
+  }
+
+  // Turnaround: moved from loss to profit
+  if (profitAnalysis.status === 'turned_profitable') {
+    const revPart = revAnalysis.isGrowth && revAnalysis.growthPct !== null
+      ? `Sales expanded +${revAnalysis.growthPct.toFixed(1)}% YoY while `
+      : '';
+    const marginPart = margin ? ` (achieving a ${margin.formatted} net margin)` : '';
+    return `${revPart}Operations turned profitable, reversing last year's net loss${marginPart}.`;
+  }
+
+  // Turnaround: moved from profit to loss
+  if (profitAnalysis.status === 'turned_loss_making') {
+    return 'The company swung from a net profit into a net loss despite reported business activity.';
+  }
+
+  // Both growing
+  if (revAnalysis.isGrowth && profitAnalysis.status === 'profit_growth') {
+    const marginPart = margin ? ` with a ${margin.formatted} net profit margin` : '';
+    return `Both sales (+${revAnalysis.growthPct.toFixed(1)}%) and net profit (+${profitAnalysis.growthPct.toFixed(1)}%) expanded compared with the prior year period${marginPart}.`;
+  }
+
+  // Revenue up, profit down
+  if (revAnalysis.isGrowth && profitAnalysis.status === 'profit_decline') {
+    return `Sales grew by +${revAnalysis.growthPct.toFixed(1)}%, but reported net profit declined by ${Math.abs(profitAnalysis.growthPct).toFixed(1)}% YoY.`;
+  }
+
+  // Both declining
+  if (!revAnalysis.isGrowth && revAnalysis.growthPct !== null && profitAnalysis.status === 'profit_decline') {
+    return `Both revenue (${revAnalysis.growthPct.toFixed(1)}%) and net profit (${profitAnalysis.growthPct.toFixed(1)}%) contracted compared with the prior year period.`;
+  }
+
+  // Loss narrowing
+  if (profitAnalysis.status === 'loss_narrowed') {
+    const revPart = revAnalysis.isGrowth && revAnalysis.growthPct !== null
+      ? `Sales expanded +${revAnalysis.growthPct.toFixed(1)}% YoY while `
+      : '';
+    return `${revPart}Reported net losses narrowed compared with the corresponding period last year.`;
+  }
+
+  // Loss widening
+  if (profitAnalysis.status === 'loss_widened') {
+    return 'Reported net losses widened compared with the prior year period.';
+  }
+
+  // Single period available
+  if (revAnalysis.status === 'standalone' && profitAnalysis.isProfitable) {
+    return `Reported positive net profit${margin ? ` (${margin.formatted} margin)` : ''}; prior comparable period not available for YoY comparison.`;
+  }
+  if (revAnalysis.status === 'standalone' && profitAnalysis.isLoss) {
+    return 'Reported a net loss for the period; prior comparable period not available for YoY comparison.';
+  }
+
+  return 'Financial figures reported from official filings; check notes and offer documents for detailed restated context.';
+}
+
+/**
+ * Formats monetary observations cleanly (e.g. ₹470.28 cr or -₹1.02 cr).
+ */
+function formatCurrencyCr(val) {
+  if (!Number.isFinite(val)) return 'Unavailable';
+  const formatted = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(Math.abs(val));
+  return val < 0 ? `-₹${formatted} cr` : `₹${formatted} cr`;
+}
+
+/**
+ * Renders the flagship Business Performance Slide.
+ */
+function renderBusinessPerformanceSlide(ipo, slidePanel, page, { el, safeLink, sourceLine }) {
+  slidePanel.classList.add('performance-slide');
+
+  // Eyebrow and Header
+  const existingEyebrow = slidePanel.querySelector('.eyebrow');
+  if (existingEyebrow) {
+    existingEyebrow.textContent = 'FINANCIAL SNAPSHOT';
+  } else {
+    slidePanel.append(el('p', 'FINANCIAL SNAPSHOT', 'eyebrow'));
+  }
+
+  const existingH4 = slidePanel.querySelector('h4');
+  const subtitle = el('p', 'Key revenue and profitability trends.', 'performance-subtitle');
+  if (existingH4) {
+    existingH4.textContent = 'Business performance';
+    existingH4.after(subtitle);
+  } else {
+    slidePanel.append(el('h4', 'Business performance'), subtitle);
+  }
+
+  // Extract Sales and Net profit metric stories
+  const metrics = page.metrics || [];
+  const salesStory = metrics.find(m => /sales|revenue/i.test(m.title)) || metrics[0];
+  const profitStory = metrics.find(m => /profit|pat/i.test(m.title)) || metrics[1];
+
+  const currentRevObs = salesStory?.current;
+  const priorRevObs = salesStory?.prior;
+  const currentProfitObs = profitStory?.current;
+  const priorProfitObs = profitStory?.prior;
+
+  const revAnalysis = analyzeRevenue(currentRevObs, priorRevObs);
+  const profitAnalysis = analyzeProfitability(currentProfitObs, priorProfitObs);
+  const margin = calculateProfitMargin(currentRevObs, currentProfitObs);
+
+  // LEVEL 1: Financial Snapshot ("What this means" Callout)
+  const insightCard = el('div', undefined, 'performance-insight-card');
+  const insightIcon = el('span', '💡', 'insight-icon');
+  insightIcon.setAttribute('aria-hidden', 'true');
+  const insightBody = el('div', undefined, 'insight-body');
+  insightBody.append(
+    el('strong', 'Financial trajectory', 'insight-title'),
+    el('p', generateFinancialInsight({ revAnalysis, profitAnalysis, margin }), 'insight-text')
+  );
+  insightCard.append(insightIcon, insightBody);
+  slidePanel.append(insightCard);
+
+  // LEVEL 2: Financial Comparisons
+
+  // Section 1: Sales / Revenue Card
+  if (salesStory && currentRevObs) {
+    const salesCard = el('section', undefined, 'performance-metric-card sales-metric-card');
+    salesCard.setAttribute('aria-label', 'Sales and revenue performance');
+
+    const salesHeader = el('div', undefined, 'metric-card-header');
+    const titleGroup = el('div', undefined, 'metric-title-group');
+    titleGroup.append(
+      el('h5', 'Sales', 'metric-card-title'),
+      el('span', 'Revenue from operations', 'metric-card-caption')
+    );
+    salesHeader.append(titleGroup);
+
+    if (revAnalysis.badge) {
+      const badge = el('span', revAnalysis.badge, `metric-trend-badge ${revAnalysis.badgeType}`);
+      salesHeader.append(badge);
+    }
+    salesCard.append(salesHeader);
+
+    // Primary Stat Row
+    const heroRow = el('div', undefined, 'metric-hero-row');
+    const heroValue = el('div', formatCurrencyCr(currentRevObs.value), 'metric-hero-value');
+    const periodDesc = formatFinancialPeriod(currentRevObs.period);
+    const heroPeriod = el('span', periodDesc.label, 'metric-hero-period');
+    heroRow.append(heroValue, heroPeriod);
+    salesCard.append(heroRow);
+
+    // Comparison Bars (if comparable prior period exists)
+    if (priorRevObs && Number.isFinite(priorRevObs.value) && priorRevObs.value > 0) {
+      const maxVal = Math.max(currentRevObs.value, priorRevObs.value);
+      const currPct = Math.max(12, Math.round((currentRevObs.value / maxVal) * 100));
+      const priorPct = Math.max(12, Math.round((priorRevObs.value / maxVal) * 100));
+      const prevDesc = formatFinancialPeriod(priorRevObs.period);
+
+      const barStack = el('div', undefined, 'comparison-bar-stack');
+
+      // Current Row
+      const currRow = el('div', undefined, 'comparison-bar-row');
+      const currMeta = el('div', undefined, 'bar-meta-row');
+      currMeta.append(
+        el('span', periodDesc.label, 'bar-period-label'),
+        el('strong', formatCurrencyCr(currentRevObs.value), 'bar-value-label')
+      );
+      const currTrack = el('div', undefined, 'bar-track');
+      currTrack.setAttribute('aria-hidden', 'true');
+      const currFill = el('div', undefined, `bar-fill ${revAnalysis.isGrowth ? 'fill-positive' : 'fill-negative'}`);
+      currFill.style.width = `${currPct}%`;
+      currTrack.append(currFill);
+      currRow.append(currMeta, currTrack);
+
+      // Prior Row
+      const priorRow = el('div', undefined, 'comparison-bar-row');
+      const priorMeta = el('div', undefined, 'bar-meta-row');
+      priorMeta.append(
+        el('span', prevDesc.label, 'bar-period-label text-muted'),
+        el('span', formatCurrencyCr(priorRevObs.value), 'bar-value-label text-muted')
+      );
+      const priorTrack = el('div', undefined, 'bar-track');
+      priorTrack.setAttribute('aria-hidden', 'true');
+      const priorFill = el('div', undefined, 'bar-fill fill-prior');
+      priorFill.style.width = `${priorPct}%`;
+      priorTrack.append(priorFill);
+      priorRow.append(priorMeta, priorTrack);
+
+      barStack.append(currRow, priorRow);
+      salesCard.append(barStack);
+    }
+
+    salesCard.append(el('p', revAnalysis.explanation, 'metric-takeaway-text'));
+    slidePanel.append(salesCard);
+  }
+
+  // Section 2: Net Profit (PAT) Card
+  if (profitStory && currentProfitObs) {
+    const profitCard = el('section', undefined, 'performance-metric-card profit-metric-card');
+    profitCard.setAttribute('aria-label', 'Net profit performance');
+
+    const profitHeader = el('div', undefined, 'metric-card-header');
+    const titleGroup = el('div', undefined, 'metric-title-group');
+    titleGroup.append(
+      el('h5', 'Net profit', 'metric-card-title'),
+      el('span', 'Profit after tax (PAT)', 'metric-card-caption')
+    );
+    profitHeader.append(titleGroup);
+
+    // Prominent Status Badge (e.g. Turned profitable, ▲ +174.7% YoY, Loss narrowed)
+    const statusPill = el('span', profitAnalysis.badge, `metric-trend-badge ${profitAnalysis.badgeType}`);
+    profitHeader.append(statusPill);
+    profitCard.append(profitHeader);
+
+    // Primary Stat Row with Margin Chip
+    const heroRow = el('div', undefined, 'metric-hero-row');
+    const currValFormatted = formatCurrencyCr(currentProfitObs.value);
+    const heroValue = el('div', currValFormatted, `metric-hero-value ${currentProfitObs.value < 0 ? 'text-negative' : 'text-positive'}`);
+    const periodDesc = formatFinancialPeriod(currentProfitObs.period);
+
+    const periodWrap = el('div', undefined, 'hero-period-wrap');
+    periodWrap.append(el('span', periodDesc.label, 'metric-hero-period'));
+
+    if (margin) {
+      const marginChip = el('span', `${margin.formatted} net margin`, `margin-chip ${margin.isPositive ? 'margin-positive' : 'margin-negative'}`);
+      periodWrap.append(marginChip);
+    }
+    heroRow.append(heroValue, periodWrap);
+    profitCard.append(heroRow);
+
+    // Zero-Baseline Visual Scale (handles loss-to-profit, negative values, and zero accurately)
+    if (priorProfitObs && Number.isFinite(priorProfitObs.value)) {
+      const prevDesc = formatFinancialPeriod(priorProfitObs.period);
+      const currVal = currentProfitObs.value;
+      const prevVal = priorProfitObs.value;
+
+      const scaleCard = el('div', undefined, 'zero-baseline-container');
+      scaleCard.setAttribute('aria-label', 'Net profit zero-baseline comparison');
+
+      // Grid with values & zero scale
+      const rowCurr = el('div', undefined, 'zero-scale-row');
+      const metaCurr = el('div', undefined, 'bar-meta-row');
+      metaCurr.append(
+        el('span', periodDesc.label, 'bar-period-label'),
+        el('strong', `${formatCurrencyCr(currVal)} (${currVal >= 0 ? 'Profit' : 'Loss'})`, currVal >= 0 ? 'bar-value-label text-positive' : 'bar-value-label text-negative')
+      );
+
+      const rowPrior = el('div', undefined, 'zero-scale-row');
+      const metaPrior = el('div', undefined, 'bar-meta-row');
+      metaPrior.append(
+        el('span', prevDesc.label, 'bar-period-label text-muted'),
+        el('span', `${formatCurrencyCr(prevVal)} (${prevVal >= 0 ? 'Profit' : 'Loss'})`, prevVal >= 0 ? 'bar-value-label text-muted' : 'bar-value-label text-negative-muted')
+      );
+
+      // Bidirectional Zero Baseline Track
+      // Min and max bounds for proportional zero line
+      const minVal = Math.min(0, currVal, prevVal);
+      const maxVal = Math.max(0, currVal, prevVal);
+      const span = Math.max(0.01, maxVal - minVal);
+      const zeroPct = ((-minVal) / span) * 100;
+
+      const calcBarStyles = val => {
+        if (val >= 0) {
+          const widthPct = Math.max(6, Math.min(100 - zeroPct, (val / span) * 100));
+          return { left: `${zeroPct}%`, width: `${widthPct}%`, isNeg: false };
+        } else {
+          const widthPct = Math.max(6, Math.min(zeroPct, (Math.abs(val) / span) * 100));
+          const leftPct = Math.max(0, zeroPct - widthPct);
+          return { left: `${leftPct}%`, width: `${widthPct}%`, isNeg: true };
+        }
+      };
+
+      const currBar = calcBarStyles(currVal);
+      const trackCurr = el('div', undefined, 'zero-track');
+      trackCurr.setAttribute('aria-hidden', 'true');
+      const zeroLineCurr = el('div', undefined, 'zero-line-marker');
+      zeroLineCurr.style.left = `${zeroPct}%`;
+      const fillCurr = el('div', undefined, `zero-fill ${currBar.isNeg ? 'fill-loss' : 'fill-profit'}`);
+      fillCurr.style.left = currBar.left;
+      fillCurr.style.width = currBar.width;
+      trackCurr.append(zeroLineCurr, fillCurr);
+      rowCurr.append(metaCurr, trackCurr);
+
+      const priorBar = calcBarStyles(prevVal);
+      const trackPrior = el('div', undefined, 'zero-track');
+      trackPrior.setAttribute('aria-hidden', 'true');
+      const zeroLinePrior = el('div', undefined, 'zero-line-marker');
+      zeroLinePrior.style.left = `${zeroPct}%`;
+      const fillPrior = el('div', undefined, `zero-fill ${priorBar.isNeg ? 'fill-prior-loss' : 'fill-prior-profit'}`);
+      fillPrior.style.left = priorBar.left;
+      fillPrior.style.width = priorBar.width;
+      trackPrior.append(zeroLinePrior, fillPrior);
+      rowPrior.append(metaPrior, trackPrior);
+
+      // Legend scale labels (Loss zone < 0 < Profit zone)
+      const scaleLegend = el('div', undefined, 'zero-scale-legend');
+      scaleLegend.append(
+        el('span', '◀ Net loss zone', 'legend-loss'),
+        el('span', '0 (Baseline)', 'legend-zero'),
+        el('span', 'Profit zone ▶', 'legend-profit')
+      );
+
+      scaleCard.append(rowCurr, rowPrior, scaleLegend);
+      profitCard.append(scaleCard);
+    }
+
+    profitCard.append(el('p', profitAnalysis.explanation, 'metric-takeaway-text'));
+    slidePanel.append(profitCard);
+  }
+
+  // LEVEL 3: Detailed Financial Context & Evidence (Expandable)
+  const contextDetails = el('details', undefined, 'financial-context-details');
+  const contextSummary = el('summary', undefined, 'financial-context-trigger');
+  contextSummary.append(
+    el('span', 'Detailed financial context & evidence', 'context-label'),
+    el('span', '▾', 'context-chevron')
+  );
+
+  const contextContent = el('div', undefined, 'financial-context-content');
+
+  // Metadata micro-grid
+  const metaGrid = el('div', undefined, 'context-meta-grid');
+
+  // 1. Reporting Scope
+  const scopeTile = el('div', undefined, 'context-tile');
+  scopeTile.append(
+    el('span', 'Reporting basis', 'context-tile-label'),
+    el('strong', 'Consolidated restated', 'context-tile-value')
+  );
+
+  // 2. Statement Type
+  const stmtTile = el('div', undefined, 'context-tile');
+  stmtTile.append(
+    el('span', 'Financial statement', 'context-tile-label'),
+    el('strong', 'Statement of Profit & Loss', 'context-tile-value')
+  );
+
+  // 3. Margin breakdown (if available)
+  const marginTile = el('div', undefined, 'context-tile');
+  marginTile.append(
+    el('span', 'Net profit margin', 'context-tile-label'),
+    el('strong', margin ? `${margin.formatted} (PAT ÷ Revenue)` : 'Not calculable', 'context-tile-value')
+  );
+
+  // 4. Comparison basis
+  const compTile = el('div', undefined, 'context-tile');
+  compTile.append(
+    el('span', 'Comparison basis', 'context-tile-label'),
+    el('strong', 'Year-on-year (same period)', 'context-tile-value')
+  );
+
+  metaGrid.append(scopeTile, stmtTile, marginTile, compTile);
+  contextContent.append(metaGrid);
+
+  // Document Citation and Link
+  const citeBox = el('div', undefined, 'context-citation-box');
+  const citeText = el('p', 'Data extracted from official issuer Red Herring Prospectus (RHP) financial disclosures filed with SEBI and stock exchanges.', 'context-cite-text');
+  citeBox.append(citeText);
+
+  if (ipo.documents && ipo.documents.length) {
+    const rhpDoc = ipo.documents.find(d => /rhp|prospectus|offer/i.test(d.label || '') || /rhp|prospectus/i.test(d.url || '')) || ipo.documents[0];
+    if (rhpDoc && rhpDoc.url) {
+      const docLink = safeLink('View official offer document', rhpDoc.url);
+      docLink.classList.add('context-doc-link');
+      citeBox.append(docLink);
+    }
+  }
+  contextContent.append(citeBox);
+
+  contextDetails.append(contextSummary, contextContent);
+  slidePanel.append(contextDetails);
+
+  // Source line
+  const allSourceIds = [
+    ...(currentRevObs?.sourceIds || []),
+    ...(currentProfitObs?.sourceIds || [])
+  ];
+  const uniqueSourceIds = [...new Set(allSourceIds)];
+  const observedAt = currentProfitObs?.observedAt || currentRevObs?.observedAt || ipo.updatedAt;
+  slidePanel.append(sourceLine(ipo, uniqueSourceIds, observedAt));
+}
+
+return {formatFinancialPeriod,analyzeProfitability,analyzeRevenue,calculateProfitMargin,generateFinancialInsight,formatCurrencyCr,renderBusinessPerformanceSlide};})();
+modules["src/components/overview-view.js"]=(()=>{/**
+ * overview-view.js
+ * Sourced presentation of IPO timeline, investment summary metrics, and proportional issue composition.
+ */
+
+const compactDates = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+const dayDates = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+const dates = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+/**
+ * Format milestone date in IST, appending compact year token (e.g. '24) if year differs from reference year
+ * or if timeline spans multiple calendar years, preventing ambiguous interpretations.
+ */
+function formatMilestoneDate(dateStr, { now = new Date(), allYears = [] } = {}) {
+  if (!dateStr || !Number.isFinite(Date.parse(dateStr))) return 'Unavailable';
+  const d = new Date(dateStr);
+  const nowYear = (now instanceof Date ? now : new Date(now)).getFullYear();
+  const dYear = d.getFullYear();
+  const baseFmt = compactDates.format(d);
+  if (dYear !== nowYear || allYears.length > 1) {
+    return `${baseFmt} '${String(dYear).slice(-2)}`;
+  }
+  return baseFmt;
+}
+
+/**
+ * Calculate minimum retail investment amount and mathematical formula.
+ * Formula: Lot size × Applicable upper-band price (or fixed issue price).
+ */
+function calculateMinimumInvestment(priceBand, lotSize) {
+  const upperPrice = Number.isFinite(priceBand?.max) ? priceBand.max : Number.isFinite(priceBand?.min) ? priceBand.min : null;
+  const validLot = Number.isFinite(lotSize) && lotSize > 0;
+
+  if (upperPrice === null || !validLot) {
+    return {
+      amount: null,
+      formattedAmount: 'Unavailable',
+      formula: 'Price band or lot size pending',
+      isAvailable: false
+    };
+  }
+
+  const amount = upperPrice * lotSize;
+  const isRange = Number.isFinite(priceBand?.min) && priceBand.min !== priceBand.max;
+  const priceLabel = `₹${upperPrice.toLocaleString('en-IN')}`;
+  const formula = `${lotSize.toLocaleString('en-IN')} shares × ${priceLabel}${isRange ? ' (upper band)' : ''}`;
+
+  return {
+    amount,
+    formattedAmount: money.format(amount),
+    formula,
+    isAvailable: true
+  };
+}
+
+/**
+ * Determine issue size label, formatted value, and explanatory basis note.
+ * Uses "Issue size (up to)" rather than "Offer ceiling" when based on upper-band terms/limits.
+ */
+function getIssueSizeDetails(ipo) {
+  if (ipo.isDemo) {
+    return {
+      label: 'Issue size',
+      value: ipo.issueSizeCr ? `₹${ipo.issueSizeCr.toLocaleString('en-IN')} crore` : 'Unavailable',
+      note: 'Demo issue figures',
+      isCeiling: false,
+      isAvailable: Boolean(ipo.issueSizeCr)
+    };
+  }
+
+  // When confirmed exact issueSizeCr is missing but offerTerms ceiling exists:
+  if ((ipo.issueSizeCr === null || ipo.issueSizeCr === undefined) && ipo.offerTerms?.ceilingCr) {
+    const formatted = ipo.offerTerms.ceilingCr.toLocaleString('en-IN', { maximumFractionDigits: 1 });
+    const basisLabel = ipo.offerTerms.basis === 'calculated_upper_band_ceiling'
+      ? 'At upper band ceiling'
+      : 'Disclosed aggregate limit';
+    return {
+      label: 'Issue size (up to)',
+      value: `≤ ₹${formatted} crore`,
+      note: basisLabel,
+      isCeiling: true,
+      isAvailable: true
+    };
+  }
+
+  if (Number.isFinite(ipo.issueSizeCr)) {
+    const formatted = ipo.issueSizeCr.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    return {
+      label: 'Issue size',
+      value: `₹${formatted} crore`,
+      note: 'Confirmed issue size',
+      isCeiling: false,
+      isAvailable: true
+    };
+  }
+
+  return {
+    label: 'Issue size',
+    value: 'Unavailable',
+    note: 'Pending offer document',
+    isCeiling: false,
+    isAvailable: false
+  };
+}
+
+/**
+ * Analyze issue composition (Fresh issue vs Offer for sale).
+ * Reconciles percentages and provides clear beneficiary disclosures.
+ */
+function getIssueCompositionDetails(ipo) {
+  let freshRaw = ipo.composition?.freshPercent ?? ipo.offerTerms?.freshPercentAtCeiling ?? null;
+  let ofsRaw = ipo.composition?.ofsPercent ?? ipo.offerTerms?.ofsPercentAtCeiling ?? null;
+
+  if (!Number.isFinite(freshRaw) || !Number.isFinite(ofsRaw)) {
+    return {
+      isAvailable: false,
+      freshPercent: null,
+      ofsPercent: null,
+      freshLabel: 'Unavailable',
+      ofsLabel: 'Unavailable',
+      basisNote: 'Breakdown pending official disclosure',
+      impactText: 'Breakdown between fresh capital and selling shareholders pending.',
+      isPureFresh: false,
+      isPureOFS: false
+    };
+  }
+
+  // Normalize percentages to sum to 100 if both are non-negative
+  const sum = freshRaw + ofsRaw;
+  let fresh = freshRaw;
+  let ofs = ofsRaw;
+  if (sum > 0 && Math.abs(sum - 100) > 0.05) {
+    fresh = (freshRaw / sum) * 100;
+    ofs = (ofsRaw / sum) * 100;
+  }
+
+  const isPureFresh = fresh >= 99.99 || ofs <= 0.01;
+  const isPureOFS = ofs >= 99.99 || fresh <= 0.01;
+
+  let basis = 'offer value';
+  if (ipo.offerTerms?.freshShares && ipo.offerTerms?.ofsShares && !ipo.offerTerms?.freshAmountCr && !ipo.offerTerms?.ofsAmountCr) {
+    basis = 'share count';
+  }
+
+  let basisNote = `By ${basis}`;
+  if (ipo.offerTerms?.basis === 'calculated_upper_band_ceiling') {
+    basisNote += ' (at upper band)';
+  }
+
+  let impactText = '';
+  if (isPureFresh) {
+    impactText = '100% Fresh issue: Entire proceeds go to the company for operations & growth. No promoter divestment.';
+  } else if (isPureOFS) {
+    impactText = '100% Offer for sale: Entire proceeds go to selling shareholders. The company receives no capital.';
+  } else {
+    impactText = 'Fresh proceeds go to company; OFS proceeds go to selling shareholders, subject to issue expenses.';
+  }
+
+  return {
+    isAvailable: true,
+    freshPercent: fresh,
+    ofsPercent: ofs,
+    freshFormatted: Number(fresh.toFixed(1)),
+    ofsFormatted: Number(ofs.toFixed(1)),
+    freshLabel: `Fresh issue ≈${Number(fresh.toFixed(1))}%`,
+    ofsLabel: `Offer for sale ≈${Number(ofs.toFixed(1))}%`,
+    basis,
+    basisNote,
+    impactText,
+    isPureFresh,
+    isPureOFS
+  };
+}
+
+/**
+ * Render the context-aware IPO timeline with satin recessed groove and milestone droplets.
+ */
+function renderOverviewTimeline(ipo, { el, now = new Date() } = {}) {
+  const timeline = el('dl', undefined, 'issue-dates');
+  timeline.setAttribute('aria-label', 'IPO dates in IST');
+
+  const allYears = [...new Set(
+    Object.values(ipo.timeline || {})
+      .filter(Boolean)
+      .map(date => new Intl.DateTimeFormat('en', { timeZone: 'Asia/Kolkata', year: 'numeric' }).format(new Date(date)))
+  )];
+  timeline.append(el('div', `IPO DATES · ${allYears.join(' / ') || 'IST'} · IST`, 'dates-caption'));
+
+  const nodeMap = new Map();
+  const milestones = [
+    { name: 'Opens', date: ipo.timeline?.opensAt, isConfirmed: Boolean(ipo.timeline?.opensAt) },
+    { name: 'Closes', date: ipo.timeline?.closesAt, isConfirmed: Boolean(ipo.timeline?.closesAt) },
+    {
+      name: 'Allotment',
+      date: ipo.timeline?.allotmentPublishedAt || ipo.timeline?.allotmentExpectedAt,
+      isConfirmed: Boolean(ipo.timeline?.allotmentPublishedAt)
+    },
+    {
+      name: 'Listing',
+      date: ipo.timeline?.listedAt || ipo.timeline?.listingExpectedAt,
+      isConfirmed: Boolean(ipo.timeline?.listedAt)
+    }
+  ];
+
+  for (const item of milestones) {
+    const row = el('div', undefined, `metric milestone-${item.name.toLowerCase()}`);
+    const dt = el('dt', item.name);
+
+    let dateDisplay = 'Unavailable';
+    if (item.date) {
+      dateDisplay = formatMilestoneDate(item.date, { now, allYears });
+    }
+
+    const dd = el('dd', dateDisplay);
+    if (!item.date) {
+      dd.classList.add('value-unavailable');
+    }
+
+    if (item.date) {
+      const fullDate = ipo.timelinePrecision === 'date'
+        ? dayDates.format(new Date(item.date)) + ' IST'
+        : dates.format(new Date(item.date)) + ' IST';
+      const stateLabel = item.isConfirmed ? 'Confirmed' : 'Estimated';
+      dd.title = `${item.name}: ${fullDate} · ${stateLabel}`;
+      dd.setAttribute('aria-label', `${item.name}: ${fullDate} · ${stateLabel}`);
+
+      // Subtle badge indicating confirmed vs estimated publication
+      if (item.name === 'Allotment' || item.name === 'Listing') {
+        const badgeText = item.isConfirmed ? '✓' : 'est.';
+        const statePill = el('span', badgeText, 'date-state');
+        statePill.title = item.isConfirmed ? 'Officially confirmed' : 'Tentative schedule (unconfirmed)';
+        dd.append(statePill);
+      }
+    }
+
+    row.append(dt, dd);
+    timeline.append(row);
+    nodeMap.set(item.name, { row, date: item.date, originalHtml: dd.innerHTML, isConfirmed: item.isConfirmed });
+  }
+
+  return { timeline, nodeMap };
+}
+
+/**
+ * Render the investment summary 2x2 grid with mathematical formula explainers.
+ */
+function renderInvestmentSummary(ipo, { el }) {
+  const metrics = el('dl', undefined, 'metrics overview-metrics-grid');
+
+  // 1. Price Band
+  const priceBandTile = el('div', undefined, 'metric metric-price-band');
+  const priceBandDt = el('dt', 'Price band');
+  let priceBandText = 'Unavailable';
+  let priceBandSub = 'Per equity share';
+  if (ipo.priceBand) {
+    if (ipo.priceBand.min === ipo.priceBand.max) {
+      priceBandText = `₹${ipo.priceBand.max.toLocaleString('en-IN')}`;
+      priceBandSub = 'Fixed issue price';
+    } else {
+      priceBandText = `₹${ipo.priceBand.min.toLocaleString('en-IN')} – ₹${ipo.priceBand.max.toLocaleString('en-IN')}`;
+      priceBandSub = `Upper band: ₹${ipo.priceBand.max.toLocaleString('en-IN')}`;
+    }
+  }
+  const priceBandDd = el('dd', priceBandText, !ipo.priceBand ? 'value-unavailable' : undefined);
+  const priceBandCaption = el('span', priceBandSub, 'metric-subcaption');
+  priceBandTile.append(priceBandDt, priceBandDd, priceBandCaption);
+
+  // 2. Lot Size
+  const lotSizeTile = el('div', undefined, 'metric metric-lot-size');
+  const lotSizeDt = el('dt', 'Lot size');
+  const lotSizeVal = Number.isFinite(ipo.lotSize) && ipo.lotSize > 0;
+  const lotSizeText = lotSizeVal ? `${ipo.lotSize.toLocaleString('en-IN')} ${ipo.lotSize === 1 ? 'share' : 'shares'}` : 'Unavailable';
+  const lotSizeDd = el('dd', lotSizeText, !lotSizeVal ? 'value-unavailable' : undefined);
+  const lotSizeCaption = el('span', lotSizeVal ? '1 retail application lot' : 'Pending announcement', 'metric-subcaption');
+  lotSizeTile.append(lotSizeDt, lotSizeDd, lotSizeCaption);
+
+  // 3. Minimum Investment (Prominently explained with formula)
+  const minInvest = calculateMinimumInvestment(ipo.priceBand, ipo.lotSize);
+  const minInvestTile = el('div', undefined, 'metric metric-minimum-investment');
+  const minInvestDt = el('dt', 'Minimum investment');
+  const minInvestDd = el('dd', minInvest.formattedAmount, !minInvest.isAvailable ? 'value-unavailable' : undefined);
+  const minInvestCaption = el('span', minInvest.formula, 'metric-subcaption min-invest-formula');
+  minInvestTile.append(minInvestDt, minInvestDd, minInvestCaption);
+
+  // 4. Issue Size (Up to)
+  const issueSizeInfo = getIssueSizeDetails(ipo);
+  const issueSizeTile = el('div', undefined, 'metric metric-issue-size');
+  const issueSizeDt = el('dt', issueSizeInfo.label);
+  const issueSizeDd = el('dd', issueSizeInfo.value, !issueSizeInfo.isAvailable ? 'value-unavailable' : undefined);
+  const issueSizeCaption = el('span', issueSizeInfo.note, 'metric-subcaption');
+  issueSizeTile.append(issueSizeDt, issueSizeDd, issueSizeCaption);
+
+  metrics.append(priceBandTile, lotSizeTile, minInvestTile, issueSizeTile);
+  return metrics;
+}
+
+/**
+ * Render the proportional Fresh vs OFS split card with segmented bar.
+ */
+function renderCompositionCard(ipo, { el }) {
+  const composition = el('div', undefined, 'composition funding-split offer-composition-card');
+  const compInfo = getIssueCompositionDetails(ipo);
+
+  if (!compInfo.isAvailable) {
+    const unavailTitle = el('strong', 'Issue split unavailable');
+    const unavailText = el('p', compInfo.impactText, 'funding-impact');
+    composition.append(unavailTitle, unavailText);
+    return composition;
+  }
+
+  // Header row with title and basis indicator
+  const compHeader = el('div', undefined, 'composition-header');
+  const compTitle = el('span', 'ISSUE COMPOSITION', 'composition-title-eyebrow');
+  const basisPill = el('span', compInfo.basisNote, 'composition-basis-pill');
+  compHeader.append(compTitle, basisPill);
+
+  // Proportional horizontal segmented bar track
+  const barTrack = el('div', undefined, 'composition-bar-track');
+  barTrack.setAttribute('role', 'meter');
+  barTrack.setAttribute('aria-label', `Issue composition: Fresh issue ${compInfo.freshFormatted}%, Offer for sale ${compInfo.ofsFormatted}%`);
+  barTrack.setAttribute('aria-valuenow', String(compInfo.freshFormatted));
+  barTrack.setAttribute('aria-valuemin', '0');
+  barTrack.setAttribute('aria-valuemax', '100');
+
+  if (compInfo.freshPercent > 0) {
+    const freshSegment = el('div', undefined, 'composition-segment composition-segment-fresh');
+    freshSegment.style.width = `${compInfo.freshPercent}%`;
+    freshSegment.title = compInfo.freshLabel;
+    barTrack.append(freshSegment);
+  }
+
+  if (compInfo.ofsPercent > 0) {
+    const ofsSegment = el('div', undefined, 'composition-segment composition-segment-ofs');
+    ofsSegment.style.width = `${compInfo.ofsPercent}%`;
+    ofsSegment.title = compInfo.ofsLabel;
+    barTrack.append(ofsSegment);
+  }
+
+  // Key breakdown details row
+  const breakdownRow = el('div', undefined, 'composition-breakdown-row');
+
+  // Fresh issue column
+  const freshCol = el('div', undefined, 'composition-col col-fresh');
+  const freshHeading = el('div', undefined, 'col-heading');
+  const freshDot = el('span', undefined, 'dot dot-fresh');
+  const freshLabel = el('strong', compInfo.freshLabel, 'col-stat-value');
+  freshHeading.append(freshDot, freshLabel);
+  const freshImpact = el('span', 'Goes to company', 'col-beneficiary');
+  freshCol.append(freshHeading, freshImpact);
+
+  // OFS column
+  const ofsCol = el('div', undefined, 'composition-col col-ofs');
+  const ofsHeading = el('div', undefined, 'col-heading');
+  const ofsDot = el('span', undefined, 'dot dot-ofs');
+  const ofsLabel = el('strong', compInfo.ofsLabel, 'col-stat-value');
+  ofsHeading.append(ofsDot, ofsLabel);
+  const ofsImpact = el('span', 'Goes to selling shareholders', 'col-beneficiary');
+  ofsCol.append(ofsHeading, ofsImpact);
+
+  breakdownRow.append(freshCol, ofsCol);
+
+  // Impact explainer subtext
+  const impactSub = el('p', compInfo.impactText, 'funding-impact');
+
+  composition.append(compHeader, barTrack, breakdownRow, impactSub);
+  return composition;
+}
+
+return {formatMilestoneDate,calculateMinimumInvestment,getIssueSizeDetails,getIssueCompositionDetails,renderOverviewTimeline,renderInvestmentSummary,renderCompositionCard};})();
 modules["src/components/ipo-card.js"]=(()=>{const {informationFreshness}=modules["src/domain/data-freshness.js"];
 const {financialStories,financialPeriod,financialValue,financialPages}=modules["src/domain/financial-story.js"];
 const {getLifecycle}=modules["src/domain/lifecycle.js"];
 const {closingDayCountdown,swipeDirection}=modules["src/domain/research-actions.js"];
+const {renderEnrichmentDetails,isEnrichmentNote}=modules["src/components/enrichment-slot.js"];
+const {renderEvidenceSlide}=modules["src/components/evidence-view.js"];
+const {renderBusinessSlide, getReportedBusinessDetails}=modules["src/components/business-view.js"];
+const {renderBusinessPerformanceSlide, formatFinancialPeriod}=modules["src/components/performance-view.js"];
+const {renderOverviewTimeline, renderInvestmentSummary, renderCompositionCard}=modules["src/components/overview-view.js"];
 const compactDates=new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short'});
 const dates = new Intl.DateTimeFormat('en-IN', {timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
 const dayDates=new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric'});
@@ -702,37 +3081,176 @@ const money = new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR',ma
 function el(tag,text,className) {const node=document.createElement(tag); if(text!==undefined)node.textContent=text; if(className)node.className=className; return node;}
 function formatDate(value) {return value && Number.isFinite(Date.parse(value)) ? dates.format(new Date(value))+' IST' : 'Unavailable';}
 function safeLink(label,url) {let parsed;try{parsed=new URL(url);}catch{return el('span',label+': Unavailable');}if(parsed.protocol!=='https:'||parsed.username||parsed.password)return el('span',label+': Unavailable');const a=el('a',label+' ↗');a.href=parsed.href;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label',label+' (opens in a new tab)');return a;}
-function metric(label,value){const item=el('div',undefined,'metric');item.append(el('dt',label),el('dd',value));return item;}
-function observationValue(o){if(o.value===null)return 'Unavailable';return o.unit==='INR_cr'?`₹${o.value.toLocaleString('en-IN')} crore`:o.unit==='multiple'?`${o.value}×`:o.unit==='percent'?`${o.value}%`:`${o.value} ${o.unit}`;}
+function isUnavailable(value){if(value===undefined||value===null)return true;if(typeof value==='string'){const v=value.trim().toLowerCase();return v==='unavailable'||v.includes('unavailable');}return false;}
+function metric(label,value){const item=el('div',undefined,'metric');const unavail=isUnavailable(value);const dd=el('dd',value,unavail?'value-unavailable':undefined);if(unavail)item.classList.add('metric-unavailable');if(value!==undefined&&value!==null)dd.title=String(value);item.append(el('dt',label),dd);return item;}
+function observationValue(o){if(o.value===null)return 'Unavailable';const val=Number.isFinite(o.value)?Number(o.value.toFixed(2)):o.value;return o.unit==='INR_cr'?`₹${val.toLocaleString('en-IN')} crore`:o.unit==='multiple'?`${val}×`:o.unit==='percent'?`${val}%`:`${val} ${o.unit}`;}
+function formatSubscriptionCategory(label='',key=''){const l=(label||'').toLowerCase(),k=(key||'').toLowerCase();if(l.includes('qualified')||l.includes('qib')||k.includes('qib'))return 'QIB';if(l.includes('non-institutional')||l.includes('nii')||k.includes('nii')||l.includes('hni'))return 'NII';if(l.includes('shareholder')||k.includes('shareholder'))return 'Shareholder';if(l.includes('employee')||k.includes('employee'))return 'Employee';if(l.includes('retail')||k.includes('retail'))return 'Retail';if(l.includes('total')||l.includes('overall')||k.includes('total'))return 'Total';return label.replace(/\s+subscription(?:\s+after\s+rejections)?/gi,'').trim()||label;}
 function sourceLine(ipo,ids,at){const line=el('details',undefined,'source-line');line.append(el('summary','Sources · As of '+(at&&ipo.timelinePrecision==='date'?dayDates.format(new Date(at))+' IST':formatDate(at))));for(const id of ids || []){const source=ipo.sources.find(s=>s.id===id);if(source)line.append(source.url?safeLink(source.label,source.url):el('span',source.label));}if(!ids?.length)line.append(el('span','Source: Unavailable'));return line;}
-function createIPOCard(ipo,{now=new Date().toISOString(),onSave=()=>{},onShare=()=>{},onLike=()=>{},onComment=()=>{},currentPreview=false}={}) {
+function createIPOCard(ipo,{now=new Date().toISOString(),onSave=()=>{},onApply=()=>{},onShare=()=>{},onLike=()=>{},onComment=()=>{},currentPreview=false}={}) {
  const item=el('li',undefined,'ipo-card');item.id='ipo-'+ipo.id;item.dataset.ipoId=ipo.id;
  const article=el('article');article.setAttribute('aria-labelledby',item.id+'-name');
- const header=el('header',undefined,'card-heading');const mark=el('div',ipo.issuer.slice(0,1),'issuer-mark');mark.setAttribute('aria-hidden','true');mark.dataset.issuer=ipo.id;const identity=el('div');const heading=el('h3',ipo.issuer);heading.id=item.id+'-name';identity.append(heading,el('p',ipo.sector || 'Sector unavailable'));const badge=el('span',undefined,'lifecycle');header.append(mark,identity,badge);
+ const index=el('button','1/5','slide-counter');index.type='button';index.setAttribute('aria-live','polite');index.setAttribute('aria-label','Slide 1 of 5. Tap to advance.');
+ const header=el('header',undefined,'card-heading');const mark=el('div',ipo.issuer.slice(0,1),'issuer-mark');mark.setAttribute('aria-hidden','true');mark.dataset.issuer=ipo.id;const identity=el('div',undefined,'card-identity');const heading=el('h3',ipo.issuer);heading.id=item.id+'-name';heading.title=ipo.issuer;const bizDetails=getReportedBusinessDetails(ipo);const hasOfficialSector=ipo.sector&&ipo.sector!=='null'&&ipo.sector.toLowerCase()!=='unavailable';const sectorLabel=hasOfficialSector?ipo.sector:(bizDetails.reportedActivity?`${bizDetails.reportedActivity} · Sector pending`:'Sector pending');identity.append(heading,el('p',sectorLabel));const statusBlock=el('div',undefined,'card-status-block');const badge=el('span',undefined,'lifecycle');const monitoringStatus=el('span',undefined,'monitoring-status');monitoringStatus.hidden=true;statusBlock.append(badge,monitoringStatus);header.append(mark,identity,statusBlock,index);
  const lifecycle=el('p',undefined,'countdown');const label=el('p',ipo.isDemo?'Fictional issuer · Demo figures':ipo.verification==='unverified'?(currentPreview?'Current official discovery · Partial coverage':'Engine preview · Partial extraction · Not current fundamentals'):`Historical archive · ${ipo.verification} · Not current fundamentals`,'data-label');
  if(currentPreview&&ipo.verification==='unverified'&&!ipo.isDemo)label.classList.add('coverage-label');
- const timeline=el('dl',undefined,'issue-dates');timeline.setAttribute('aria-label','IPO dates in IST');const years=[...new Set(Object.values(ipo.timeline).filter(Boolean).map(date=>new Intl.DateTimeFormat('en',{timeZone:'Asia/Kolkata',year:'numeric'}).format(new Date(date))))];timeline.append(el('div',`IPO DATES · ${years.join(' / ')} · IST`,'dates-caption'));for(const [name,date,state] of [['Opens',ipo.timeline.opensAt,null],['Closes',ipo.timeline.closesAt,null],['Allotment',ipo.timeline.allotmentPublishedAt||ipo.timeline.allotmentExpectedAt,ipo.timeline.allotmentPublishedAt?'Confirmed publication':'Scheduled'],['Listing',ipo.timeline.listedAt||ipo.timeline.listingExpectedAt,ipo.timeline.listedAt?'Confirmed listing':'Scheduled']]){const row=metric(name,date?compactDates.format(new Date(date)):'Unavailable');if(date){const fullDate=ipo.timelinePrecision==='date'?dayDates.format(new Date(date))+' IST':formatDate(date);row.lastChild.title=fullDate+(state?' · '+state:'');row.lastChild.setAttribute('aria-label',fullDate+(state?' · '+state:''));}if(date&&state)row.lastChild.append(el('span',state.startsWith('Confirmed')?'✓':'est.','date-state'));timeline.append(row);}
+ const {timeline,nodeMap}=renderOverviewTimeline(ipo,{el,now});
+ let isSaved=false,isApplied=false,currentClock=now;
+ function syncMilestones(){
+  const opens=nodeMap.get('Opens'),closes=nodeMap.get('Closes'),allotment=nodeMap.get('Allotment'),listing=nodeMap.get('Listing');
+  if(!closes)return;
+  const opensRow=opens?.row,closesRow=closes.row,allotmentRow=allotment?.row,listingRow=listing?.row;
+  item.classList.remove('ipo-urgent-countdown','ipo-applied-state');
+  for(const r of [opensRow,closesRow,allotmentRow,listingRow]){if(r)r.classList.remove('node-urgent-active','node-applied-secured','node-next-radar');}
+  if(!isSaved){
+    for(const [,node] of nodeMap){if(node?.row?.lastChild)node.row.lastChild.innerHTML=node.originalHtml;}
+    monitoringStatus.textContent='';monitoringStatus.hidden=true;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+    if(applyBtn){applyBtn.hidden=true;applyBtn.setAttribute('aria-pressed','false');applyBtn.classList.remove('applied-active');}
+    return;
+  }
+  const currentLifecycle=getLifecycle(ipo,currentClock);
+  const isUpcoming=currentLifecycle.status==='upcoming';
+  if(applyBtn){
+    applyBtn.hidden=false;
+    applyBtn.setAttribute('aria-pressed',String(isApplied));
+    applyBtn.classList.toggle('applied-active',isApplied);
+    applyBtn.textContent=isApplied?(isUpcoming?'✓ Pre Applied':'✓ Applied'):(isUpcoming?'Pre Applied?':'Applied?');
+    applyBtn.setAttribute('aria-label',(isUpcoming?'Mark pre-applied for ':'Mark applied for ')+ipo.issuer);
+    applyBtn.title=isUpcoming?'Mark whether you pre-applied for this IPO':'Mark whether you applied for this IPO';
+  }
+  const nowStamp=Date.parse(currentClock);
+  const openStamp=ipo.timeline.opensAt?Date.parse(ipo.timeline.opensAt):NaN;
+  const closeStamp=ipo.timeline.closesAt?Date.parse(ipo.timeline.closesAt):NaN;
+  const allotmentStamp=Date.parse(ipo.timeline.allotmentPublishedAt||ipo.timeline.allotmentExpectedAt);
+  const listingStamp=Date.parse(ipo.timeline.listedAt||ipo.timeline.listingExpectedAt);
+  const opensCrossed=Number.isFinite(openStamp)&&nowStamp>=openStamp;
+  const closesCrossed=Number.isFinite(closeStamp)&&nowStamp>=closeStamp;
+  const allotmentCrossed=Boolean(ipo.timeline.allotmentPublishedAt)&&(Number.isFinite(Date.parse(ipo.timeline.allotmentPublishedAt))?nowStamp>=Date.parse(ipo.timeline.allotmentPublishedAt):true);
+  const listingCrossed=Boolean(ipo.timeline.listedAt)&&(Number.isFinite(Date.parse(ipo.timeline.listedAt))?nowStamp>=Date.parse(ipo.timeline.listedAt):true);
+
+  if(isApplied){
+    item.classList.add('ipo-applied-state');
+    if(isUpcoming){
+      if(opensRow){
+        opensRow.classList.add('node-applied-secured');
+        opensRow.lastChild.innerHTML='<span class="applied-badge-pill" title="Pre-application marked on this device">✓ Pre Applied</span>';
+      }
+      if(closesRow)closesRow.lastChild.innerHTML=closes.originalHtml;
+      if(allotmentRow){
+        allotmentRow.classList.add('node-next-radar');
+        const origAllot=allotment.date?compactDates.format(new Date(allotment.date)):'Upcoming';
+        allotmentRow.lastChild.innerHTML=`<span class="target-allotment-pill" title="Next target">${origAllot}</span>`;
+      }
+      if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+      monitoringStatus.textContent='Monitoring allotment';monitoringStatus.hidden=false;
+    }else{
+      closesRow.classList.add('node-applied-secured');
+      closesRow.lastChild.innerHTML='<span class="applied-badge-pill" title="Application marked on this device">✓ Applied</span>';
+      if(!allotmentCrossed&&allotmentRow){
+        allotmentRow.classList.add('node-next-radar');
+        const origAllot=allotment.date?compactDates.format(new Date(allotment.date)):'Upcoming';
+        allotmentRow.lastChild.innerHTML=`<span class="target-allotment-pill" title="Next target">${origAllot}</span>`;
+        if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+        monitoringStatus.textContent='Monitoring allotment';monitoringStatus.hidden=false;
+      }else if(allotmentCrossed&&!listingCrossed&&listingRow){
+        if(allotmentRow)allotmentRow.lastChild.innerHTML=allotment.originalHtml;
+        listingRow.classList.add('node-next-radar');
+        const origList=listing.date?compactDates.format(new Date(listing.date)):'Upcoming';
+        listingRow.lastChild.innerHTML=`<span class="target-allotment-pill" title="Next target">${origList}</span>`;
+        monitoringStatus.textContent='Monitoring listing';monitoringStatus.hidden=false;
+      }else{
+        if(allotmentRow)allotmentRow.lastChild.innerHTML=allotment.originalHtml;
+        if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+        monitoringStatus.textContent='';monitoringStatus.hidden=true;
+      }
+    }
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+    return;
+  }
+
+  const minutesLeft=Number.isFinite(closeStamp)&&Number.isFinite(nowStamp)?Math.ceil((closeStamp-nowStamp)/60000):null;
+  const isClosingSoon=currentLifecycle.status==='open'&&minutesLeft!==null&&minutesLeft>0&&minutesLeft<=210;
+
+  if(!closesCrossed&&isClosingSoon){
+    item.classList.add('ipo-urgent-countdown');
+    closesRow.classList.add('node-urgent-active');
+    const h=Math.floor(minutesLeft/60),m=minutesLeft%60;
+    const timeStr=`${h>0?h+'h ':''}${m}m left`;
+    const origDate=closes.date?compactDates.format(new Date(closes.date)):'Today';
+    closesRow.lastChild.innerHTML=`<div class="ticker-box" aria-label="${timeStr}"><div class="ticker-track"><span class="ticker-slide ticker-time">${timeStr}</span><span class="ticker-slide ticker-date">${origDate}</span></div></div>`;
+    if(allotmentRow)allotmentRow.lastChild.innerHTML=allotment.originalHtml;
+    if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+    monitoringStatus.textContent='';monitoringStatus.hidden=true;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+  }else if(!closesCrossed&&opensCrossed){
+    closesRow.lastChild.innerHTML=closes.originalHtml;
+    if(allotmentRow)allotmentRow.lastChild.innerHTML=allotment.originalHtml;
+    if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+    monitoringStatus.textContent='';monitoringStatus.hidden=true;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+  }else if(closesCrossed&&!allotmentCrossed){
+    closesRow.lastChild.innerHTML=closes.originalHtml;
+    if(allotmentRow){
+      allotmentRow.classList.add('node-next-radar');
+      const origAllot=allotment.date?compactDates.format(new Date(allotment.date)):'Upcoming';
+      const allotMin=Number.isFinite(allotmentStamp)?Math.ceil((allotmentStamp-nowStamp)/60000):null;
+      if(allotMin!==null&&allotMin>0&&allotMin<=210){
+        const ah=Math.floor(allotMin/60),am=allotMin%60;
+        const aTime=`${ah>0?ah+'h ':''}${am}m left`;
+        allotmentRow.lastChild.innerHTML=`<div class="ticker-box" aria-label="${aTime}"><div class="ticker-track"><span class="ticker-slide ticker-time">${aTime}</span><span class="ticker-slide ticker-date">${origAllot}</span></div></div>`;
+      }else{
+        allotmentRow.lastChild.innerHTML=`<span class="target-allotment-pill" title="Next target">${origAllot}</span>`;
+      }
+    }
+    if(listingRow)listingRow.lastChild.innerHTML=listing.originalHtml;
+    monitoringStatus.textContent='';monitoringStatus.hidden=true;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+  }else if(allotmentCrossed&&!listingCrossed){
+    closesRow.lastChild.innerHTML=closes.originalHtml;
+    if(allotmentRow)allotmentRow.lastChild.innerHTML=allotment.originalHtml;
+    if(listingRow){
+      listingRow.classList.add('node-next-radar');
+      const origList=listing.date?compactDates.format(new Date(listing.date)):'Upcoming';
+      const listMin=Number.isFinite(listingStamp)?Math.ceil((listingStamp-nowStamp)/60000):null;
+      if(listMin!==null&&listMin>0&&listMin<=210){
+        const lh=Math.floor(listMin/60),lm=listMin%60;
+        const lTime=`${lh>0?lh+'h ':''}${lm}m left`;
+        listingRow.lastChild.innerHTML=`<div class="ticker-box" aria-label="${lTime}"><div class="ticker-track"><span class="ticker-slide ticker-time">${lTime}</span><span class="ticker-slide ticker-date">${origList}</span></div></div>`;
+      }else{
+        listingRow.lastChild.innerHTML=`<span class="target-allotment-pill" title="Next target">${origList}</span>`;
+      }
+    }
+    monitoringStatus.textContent='Awaiting listing';monitoringStatus.hidden=false;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+  }else{
+    for(const [,node] of nodeMap){if(node?.row?.lastChild)node.row.lastChild.innerHTML=node.originalHtml;}
+    if(!opensCrossed&&opensRow)opensRow.classList.add('node-next-radar');
+    monitoringStatus.textContent='';monitoringStatus.hidden=true;
+    lifecycle.className='countdown';lifecycle.textContent='';lifecycle.hidden=true;
+  }
+}
  const slider=el('div',undefined,'carousel');slider.id=item.id+'-slides';slider.tabIndex=0;slider.setAttribute('role','region');slider.setAttribute('aria-roledescription','carousel');slider.setAttribute('aria-label',`${ipo.issuer} details; use arrow keys or swipe`);
  const slide=(title)=>{const panel=el('section',undefined,'carousel-slide');panel.append(el('p','ISSUE DETAILS','eyebrow'),el('h4',title));slider.append(panel);return panel;};
- const offer=slide('The issue at a glance');offer.classList.add('offer-slide');offer.prepend(timeline);offer.insertBefore(lifecycle,timeline.nextSibling);const metrics=el('dl',undefined,'metrics');metrics.append(metric('Price band',ipo.priceBand?`${money.format(ipo.priceBand.min)} – ${money.format(ipo.priceBand.max)}`:'Unavailable'),metric('Lot size',ipo.lotSize===null?'Unavailable':`${ipo.lotSize} shares`),metric('Minimum amount',ipo.priceBand&&ipo.lotSize?money.format(ipo.priceBand.max*ipo.lotSize):'Unavailable'),metric(ipo.isDemo?'Issue size':ipo.issueSizeCr===null&&ipo.offerTerms?'Offer ceiling · upper band':'Offer amount · source snapshot',ipo.issueSizeCr===null?(ipo.offerTerms?`≤ ₹${ipo.offerTerms.ceilingCr.toLocaleString('en-IN',{maximumFractionDigits:3})} crore`:'Unavailable'):`₹${ipo.issueSizeCr.toLocaleString('en-IN')} crore`));const composition=el('div',undefined,'composition funding-split');const fresh=ipo.composition?.freshPercent??ipo.offerTerms?.freshPercentAtCeiling,ofs=ipo.composition?.ofsPercent??ipo.offerTerms?.ofsPercentAtCeiling;if(Number.isFinite(fresh)&&Number.isFinite(ofs)){composition.append(el('strong',`Fresh issue ≈${Number(fresh.toFixed(1))}%`),el('strong',`Offer for sale ≈${Number(ofs.toFixed(1))}%`),el('p',fresh===0?'OFS proceeds go to selling shareholders; this offer adds no fresh capital to the business.':ofs===0?'Fresh proceeds fund the company’s stated plans; check the objects of the offer.':'Fresh proceeds fund company plans; OFS proceeds go to selling shareholders.','funding-impact'));}else composition.append(el('strong','Issue split unavailable'));offer.append(metrics,composition,sourceLine(ipo,ipo.sourceIds,informationFreshness(ipo,null).company.sourceAt));
+ const offer=slide('The issue at a glance');offer.classList.add('offer-slide');offer.prepend(timeline);offer.insertBefore(lifecycle,timeline.nextSibling);const metrics=renderInvestmentSummary(ipo,{el});const composition=renderCompositionCard(ipo,{el});offer.append(metrics,composition,sourceLine(ipo,ipo.sourceIds,informationFreshness(ipo,null).company.sourceAt));
  if(ipo.offerTerms?.basis==='calculated_upper_band_ceiling')offer.append(el('p','Calculated from disclosed terms at the upper band; discounts are not deducted. Final proceeds remain pending.','muted calculation-note'));
- const business=slide('Business & people');business.append(el('p',ipo.business||'Business: Unavailable'),el('h5','Promoters'),el('p',ipo.promoters?.length?ipo.promoters.join(', '):'Unavailable'),sourceLine(ipo,ipo.sourceIds,informationFreshness(ipo,null).company.sourceAt));
- const profiles=ipo.notes.filter(n=>n.text.startsWith('Promoter background · '));if(profiles.length){const details=el('details',undefined,'promoter-background');details.append(el('summary','Promoter experience & associations'));for(const profile of profiles)details.append(el('p',profile.text.replace('Promoter background · ','')),sourceLine(ipo,profile.sourceIds,profile.observedAt));business.append(details);}
+ const business=slide('Business & people');
+ renderBusinessSlide(ipo,business,{el,safeLink,sourceLine,isEnrichmentNote});
  const stories=financialStories(ipo.observations);const financialPanels=[];const pages=financialPages(stories);
- if(!stories.length){const panel=slide('Financials & valuation');panel.classList.add('financial-slide');panel.append(el('p','Financial information is not available from the current sources.'));financialPanels.push(panel);}
- for(const page of pages){const panel=slide(page.title);panel.classList.add('financial-slide');financialPanels.push(panel);for(const story of page.metrics){const tile=el('section',undefined,'financial-tile');const heading=el('div',undefined,'financial-heading');heading.append(el('h5',story.title));if(story.change){const change=story.change.value;heading.append(el('span',`${change>0?'+':''}${change.toFixed(1)}${story.change.unit}${story.change.unit==='%'?' YoY':''}`,'financial-change'));}tile.append(heading);const pair=el('dl',undefined,'financial-pair');pair.append(metric(financialPeriod(story.current.period).label,story.conflicted?'Conflicting values':financialValue(story.current)),metric(story.prior?financialPeriod(story.prior.period).label:'Prior comparable',financialValue(story.prior)));tile.append(pair,el('p',story.meaning,'financial-meaning'));if(story.recent)tile.append(el('p',`Latest ${financialPeriod(story.recent.period).label}: ${financialValue(story.recent)}${/^[HQ]/.test(story.recent.period)?' · not annualised':''}`,'financial-recent'));for(const o of story.observations)tile.append(sourceLine(ipo,o.sourceIds,o.observedAt));panel.append(tile);}}
- const subscription=slide('Subscription snapshot');const subs=ipo.observations.filter(o=>o.key.startsWith('subscription'));if(!subs.length)subscription.append(el('p','Subscription: Unavailable'));for(const o of subs){subscription.append(el('p',o.label),el('strong',observationValue(o)),sourceLine(ipo,o.sourceIds,o.observedAt));}const subscriptionFreshness=el('p',undefined,'muted data-freshness');subscription.append(subscriptionFreshness,el('p','Subscription is demand at the observation time; it does not predict returns.','muted presentation-disclaimer'));
- const evidence=slide('Evidence & risks');evidence.append(el('p','Read the facts alongside editorial questions. Sources and observation times remain visible.','muted presentation-disclaimer'));if(!ipo.notes.length)evidence.append(el('p','Risk notes and analysis: Unavailable'));for(const note of ipo.notes.filter(n=>!n.text.startsWith('Promoter background · '))){const block=el('div',undefined,'evidence-note '+note.kind);block.append(el('span',note.kind==='fact'?'FACT':'EDITORIAL ANALYSIS','eyebrow'),el('p',note.text),sourceLine(ipo,note.sourceIds,note.observedAt));evidence.append(block);}
- const controls=el('div',undefined,'carousel-controls');const index=el('span','1 / 5','slide-counter');index.setAttribute('aria-live','polite');const dots=el('div',undefined,'carousel-dots');dots.setAttribute('aria-label','Choose research slide');const previous=el('button','←','research-step research-previous'),next=el('button','→','research-step research-next'),sectionTitle=el('span',undefined,'research-section-title');previous.type=next.type='button';previous.setAttribute('aria-label','Previous research slide');next.setAttribute('aria-label','Next research slide');controls.append(previous,dots,sectionTitle,index,next);let current=0,measuredWidth=0,researchLayout=false;const panels=[...slider.children];const dotButtons=panels.map((panel,i)=>{const dot=el('button');dot.type='button';dot.setAttribute('aria-label',`Slide ${i+1}: ${panel.querySelector('h4').textContent}`);dot.onclick=()=>go(i-current);dots.append(dot);return dot;});const sync=()=>{index.textContent=`${current+1} / ${panels.length}`;controls.dataset.slide=String(current+1);sectionTitle.textContent=panels[current].querySelector('h4').textContent;previous.disabled=current===0;next.disabled=current===panels.length-1;panels.forEach((panel,i)=>{panel.inert=!researchLayout&&i!==current;panel.dataset.current=String(i===current);panel.setAttribute('aria-hidden',String(!researchLayout&&i!==current));panel.setAttribute('role','group');panel.setAttribute('aria-roledescription','slide');panel.setAttribute('aria-label',`${i+1} of ${panels.length}`);dotButtons[i].setAttribute('aria-pressed',String(i===current));dotButtons[i].hidden=panels.length>7&&Math.abs(i-Math.max(3,Math.min(panels.length-4,current)))>3;});};const go=delta=>{const target=Math.max(0,Math.min(panels.length-1,current+delta));slider.scrollTo({left:target*slider.clientWidth,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});};previous.onclick=()=>go(-1);next.onclick=()=>go(1);slider.addEventListener('scroll',()=>{if(researchLayout||slider.clientWidth!==measuredWidth)return;current=Math.max(0,Math.min(panels.length-1,Math.round(slider.scrollLeft/Math.max(1,slider.clientWidth))));sync();},{passive:true});slider.addEventListener('keydown',e=>{if(!researchLayout&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();go(e.key==='ArrowLeft'?-1:1);}});let gesture=null;slider.addEventListener('pointerdown',e=>{if(researchLayout){const panel=e.target.closest('.carousel-slide');if(panel){current=panels.indexOf(panel);sync();}return;}if(e.pointerType!=='mouse'||!e.isPrimary||e.button!==0||e.target.closest('a,button,input,summary'))return;gesture={x:e.clientX,y:e.clientY,id:e.pointerId,left:slider.scrollLeft,index:current};});slider.addEventListener('pointermove',e=>{if(!gesture||gesture.id!==e.pointerId)return;const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(!gesture.horizontal&&Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.4){gesture.horizontal=true;slider.setPointerCapture(e.pointerId);slider.classList.add('mouse-dragging');}if(gesture.horizontal){if(e.cancelable)e.preventDefault();slider.scrollLeft=gesture.left-dx;}});slider.addEventListener('pointerup',e=>{if(!gesture||gesture.id!==e.pointerId)return;const delta=swipeDirection(e.clientX-gesture.x,e.clientY-gesture.y),target=gesture.index+delta;gesture=null;slider.classList.remove('mouse-dragging');if(slider.hasPointerCapture(e.pointerId))slider.releasePointerCapture(e.pointerId);go(target-current);});slider.addEventListener('pointercancel',()=>{gesture=null;slider.classList.remove('mouse-dragging');go(0);});if(typeof ResizeObserver==='function')new ResizeObserver(()=>{if(!slider.isConnected||!slider.clientWidth)return;measuredWidth=slider.clientWidth;if(researchLayout)return;slider.scrollTo({left:current*measuredWidth,behavior:'instant'});sync();}).observe(slider);sync();
- const refs=el('details',undefined,'company-links');refs.setAttribute('aria-label','Company and source documents');refs.append(el('summary','Company & offer documents'),ipo.companyWebsite?safeLink('Company website',ipo.companyWebsite):el('span','Company website: Unavailable'));if(ipo.documents.length)for(const doc of ipo.documents)refs.append(safeLink(doc.label,doc.url));else refs.append(el('span','Offer documents, exchange notices & registrar: Unavailable'));
+ if(!stories.length){const panel=slide('Financials & valuation');panel.classList.add('financial-slide');panel.append(el('p','Financial information is not available from the current sources.','value-unavailable'));financialPanels.push(panel);}
+ for(const page of pages){const panel=slide(page.title);panel.classList.add('financial-slide');financialPanels.push(panel);const isBusinessPerformance=page.title==='Business performance'||(page.metrics.some(m=>/sales|revenue/i.test(m.title))&&page.metrics.some(m=>/profit|pat/i.test(m.title)));if(isBusinessPerformance){renderBusinessPerformanceSlide(ipo,panel,page,{el,safeLink,sourceLine});continue;}for(const story of page.metrics){const tile=el('section',undefined,'financial-tile');const heading=el('div',undefined,'financial-heading');heading.append(el('h5',story.title));if(story.change){const change=story.change.value;const isPos=change>0;const changeBadge=el('span',`${isPos?'▲ +':'▼ '}${change.toFixed(1)}${story.change.unit}${story.change.unit==='%'?' YoY':''}`,'financial-change');changeBadge.dataset.trend=isPos?'positive':change<0?'negative':'neutral';heading.append(changeBadge);}tile.append(heading);const hasComparison=!story.conflicted&&story.prior&&Number.isFinite(story.current?.value)&&Number.isFinite(story.prior?.value)&&story.current.value>0&&story.prior.value>0;if(hasComparison){const maxVal=Math.max(story.current.value,story.prior.value);const currPct=Math.max(10,Math.round((story.current.value/maxVal)*100));const priorPct=Math.max(10,Math.round((story.prior.value/maxVal)*100));const isGrowth=story.current.value>=story.prior.value;const stack=el('div',undefined,'financial-comparison-stack');const latestRow=el('div',undefined,'financial-comparison-row comparison-row-latest');const latestHeader=el('div',undefined,'comparison-row-header');const latestLabel=el('span',formatFinancialPeriod(story.current.period).label,'comparison-period-label');const latestVal=el('strong',financialValue(story.current),'comparison-value');latestHeader.append(latestLabel,latestVal);const latestTrack=el('div',undefined,'comparison-bar-track');latestTrack.setAttribute('aria-hidden','true');const latestFill=el('div',undefined,`comparison-bar-fill ${isGrowth?'bar-latest-up':'bar-latest-down'}`);latestFill.style.width=`${currPct}%`;latestTrack.append(latestFill);latestRow.append(latestHeader,latestTrack);const priorRow=el('div',undefined,'financial-comparison-row comparison-row-prior');const priorHeader=el('div',undefined,'comparison-row-header');const priorLabel=el('span',formatFinancialPeriod(story.prior.period).label,'comparison-period-label');const priorVal=el('span',financialValue(story.prior),'comparison-value');priorHeader.append(priorLabel,priorVal);const priorTrack=el('div',undefined,'comparison-bar-track');priorTrack.setAttribute('aria-hidden','true');const priorFill=el('div',undefined,'comparison-bar-fill bar-prior');priorFill.style.width=`${priorPct}%`;priorTrack.append(priorFill);priorRow.append(priorHeader,priorTrack);stack.append(latestRow,priorRow);tile.append(stack);}else{const pair=el('dl',undefined,'financial-pair');pair.append(metric(formatFinancialPeriod(story.current.period).label,story.conflicted?'Conflicting values':financialValue(story.current)),metric(story.prior?formatFinancialPeriod(story.prior.period).label:'Prior period',financialValue(story.prior)));tile.append(pair);}tile.append(el('p',story.meaning,'financial-meaning'));if(story.recent)tile.append(el('p',`Latest ${formatFinancialPeriod(story.recent.period).label}: ${financialValue(story.recent)}${/^[HQ]/.test(story.recent.period)?' · not annualised':''}`,'financial-recent'));for(const o of story.observations)tile.append(sourceLine(ipo,o.sourceIds,o.observedAt));panel.append(tile);}}
+ const subscription=slide('Subscription snapshot');const subs=ipo.observations.filter(o=>o.key.startsWith('subscription'));if(!subs.length){subscription.append(el('p','Subscription: Unavailable','value-unavailable'));}else{const primary=subs.find(s=>s.key==='subscription_total')||subs.find(s=>s.key==='subscription_retail')||subs[0];const mult=Number(primary?.value);const heroCard=el('div',undefined,'subscription-analytics-card');const heroHeader=el('div',undefined,'subscription-hero-header');const categoryShort=formatSubscriptionCategory(primary?.label,primary?.key);heroHeader.append(el('span',categoryShort==='Total'?'TOTAL DEMAND':`${categoryShort.toUpperCase()} DEMAND`,'subscription-badge-eyebrow'));if(Number.isFinite(mult)){const statusPill=el('span',mult>=1.0?(mult>1.0?`${Number(mult.toFixed(2))}× Booked`:'1.0× Booked'):(mult>0?`${Number(mult.toFixed(2))}× Subscribed`:'No bids recorded'),'subscription-demand-chip');statusPill.dataset.demand=mult>=1.0?'high':mult>0?'moderate':'zero';heroHeader.append(statusPill);}const heroBody=el('div',undefined,'subscription-hero-body');const heroStat=el('div',observationValue(primary),'subscription-hero-number');const gaugeBox=el('div',undefined,'subscription-gauge-box');gaugeBox.setAttribute('aria-hidden','true');const fillWidth=Number.isFinite(mult)?Math.min(100,Math.round((mult/1.0)*100)):0;gaugeBox.innerHTML=`<div class="demand-bar-track"><div class="demand-bar-fill ${mult>=1.0?'oversubscribed':'standard'}" style="width:${fillWidth}%"></div></div><div class="demand-scale-labels"><span>0×</span><span class="demand-target-marker">1.0× Base</span><span>${Number.isFinite(mult)&&mult>1.0?Number(mult.toFixed(2))+'×':'1.0×+'}</span></div>`;heroBody.append(heroStat,gaugeBox);heroCard.append(heroHeader,heroBody);subscription.append(heroCard);const catList=el('div',undefined,'subscription-categories');for(const o of subs){const row=el('div',undefined,'subscription-cat-row');const shortLabel=formatSubscriptionCategory(o.label,o.key);const labelSpan=el('span',shortLabel,'subscription-cat-label');labelSpan.title=o.label;row.append(labelSpan,el('strong',observationValue(o),'subscription-cat-val'));catList.append(row,sourceLine(ipo,o.sourceIds,o.observedAt));}subscription.append(catList);}const subscriptionFreshness=el('p',undefined,'muted data-freshness');subscription.append(subscriptionFreshness,el('p','Subscription is demand at observation; it does not predict returns.','muted presentation-disclaimer'));
+ const evidence=slide('Evidence & risks');
+ renderEvidenceSlide(ipo, evidence, { el, safeLink, sourceLine, isEnrichmentNote });
+ const controls=el('div',undefined,'carousel-controls');const dots=el('div',undefined,'carousel-dots');dots.setAttribute('aria-label','Choose research slide');const previous=el('button','←','research-step research-previous'),next=el('button','→','research-step research-next'),sectionTitle=el('span',undefined,'research-section-title');previous.type=next.type='button';previous.setAttribute('aria-label','Previous research slide');next.setAttribute('aria-label','Next research slide');controls.append(previous,dots,sectionTitle,next);let current=0,measuredWidth=0,researchLayout=false;const panels=[...slider.children];index.textContent=`1/${panels.length}`;index.setAttribute('aria-label',`Slide 1 of ${panels.length}. Tap to advance.`);const goTo=targetIndex=>{const target=Math.max(0,Math.min(panels.length-1,targetIndex));if(typeof navigator!=='undefined'&&navigator.vibrate)try{navigator.vibrate(8);}catch{}slider.scrollTo({left:target*slider.clientWidth,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});};const go=delta=>goTo(current+delta);previous.onclick=()=>go(-1);next.onclick=()=>go(1);index.onclick=()=>goTo((current+1)%panels.length);const dotButtons=panels.map((panel,i)=>{const dot=el('button');dot.type='button';dot.setAttribute('aria-label',`Slide ${i+1}: ${panel.querySelector('h4').textContent}`);dot.onclick=()=>goTo(i);dots.append(dot);return dot;});const sync=()=>{index.textContent=`${current+1}/${panels.length}`;index.setAttribute('aria-label',`Slide ${current+1} of ${panels.length}. Tap to advance.`);controls.dataset.slide=String(current+1);sectionTitle.textContent=panels[current].querySelector('h4').textContent;previous.disabled=current===0;next.disabled=current===panels.length-1;panels.forEach((panel,i)=>{panel.inert=!researchLayout&&i!==current;panel.dataset.current=String(i===current);panel.setAttribute('aria-hidden',String(!researchLayout&&i!==current));panel.setAttribute('role','group');panel.setAttribute('aria-roledescription','slide');panel.setAttribute('aria-label',`${i+1} of ${panels.length}`);dotButtons[i].setAttribute('aria-pressed',String(i===current));dotButtons[i].hidden=panels.length>7&&Math.abs(i-Math.max(3,Math.min(panels.length-4,current)))>3;});};slider.addEventListener('scroll',()=>{if(researchLayout||slider.clientWidth!==measuredWidth)return;current=Math.max(0,Math.min(panels.length-1,Math.round(slider.scrollLeft/Math.max(1,slider.clientWidth))));sync();},{passive:true});slider.addEventListener('keydown',e=>{if(!researchLayout&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();go(e.key==='ArrowLeft'?-1:1);}});let gesture=null;slider.addEventListener('pointerdown',e=>{if(researchLayout){const panel=e.target.closest('.carousel-slide');if(panel){current=panels.indexOf(panel);sync();}return;}if(e.pointerType!=='mouse'||!e.isPrimary||e.button!==0||e.target.closest('a,button,input,summary'))return;gesture={x:e.clientX,y:e.clientY,id:e.pointerId,left:slider.scrollLeft,index:current};});slider.addEventListener('pointermove',e=>{if(!gesture||gesture.id!==e.pointerId)return;const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(!gesture.horizontal&&Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.4){gesture.horizontal=true;slider.setPointerCapture(e.pointerId);slider.classList.add('mouse-dragging');}if(gesture.horizontal){if(e.cancelable)e.preventDefault();slider.scrollLeft=gesture.left-dx;}});slider.addEventListener('pointerup',e=>{if(!gesture||gesture.id!==e.pointerId)return;const delta=swipeDirection(e.clientX-gesture.x,e.clientY-gesture.y),target=gesture.index+delta;gesture=null;slider.classList.remove('mouse-dragging');if(slider.hasPointerCapture(e.pointerId))slider.releasePointerCapture(e.pointerId);go(target-current);});slider.addEventListener('pointercancel',()=>{gesture=null;slider.classList.remove('mouse-dragging');go(0);});if(typeof ResizeObserver==='function')new ResizeObserver(()=>{if(!slider.isConnected||!slider.clientWidth)return;measuredWidth=slider.clientWidth;if(researchLayout)return;slider.scrollTo({left:current*measuredWidth,behavior:'instant'});sync();}).observe(slider);sync();
+ const refs=el('details',undefined,'company-links');refs.setAttribute('aria-label','Company and source documents');refs.append(el('summary','Company & offer documents'),ipo.companyWebsite?safeLink('Company website',ipo.companyWebsite):el('span','Company website: Unavailable','value-unavailable'));if(ipo.documents.length)for(const doc of ipo.documents)refs.append(safeLink(doc.label,doc.url));else refs.append(el('span','Offer documents, exchange notices & registrar: Unavailable','value-unavailable'));
  for(const story of stories)for(const o of story.observations)evidence.append(sourceLine(ipo,o.sourceIds,o.observedAt));
- const researchSources=el('details',undefined,'research-sources');researchSources.append(el('summary','Sources & observation dates'));const freshness=el('div',undefined,'information-freshness');researchSources.append(freshness);const uniqueSources=new Map();for(const panel of panels){for(const line of panel.querySelectorAll('.source-line')){const key=line.textContent+'|'+[...line.querySelectorAll('a')].map(a=>a.href).join('|');if(!uniqueSources.has(key))uniqueSources.set(key,line);line.remove();}}for(const line of uniqueSources.values())researchSources.append(line);evidence.append(refs,researchSources);const history=el('details',undefined,'financial-history');history.append(el('summary','All disclosed financial periods'));for(const story of stories){history.append(el('h5',story.title));const table=el('dl');for(const o of story.observations)table.append(metric(financialPeriod(o.period).label,financialValue(o)));history.append(table);}if(stories.length)evidence.append(history);
- const actions=el('div',undefined,'card-actions');const action=(name,paths,className)=>{const button=el('button',undefined,className);button.type='button';button.setAttribute('aria-label',name+' '+ipo.issuer);button.title=name;button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>';return button;};const like=action('Like','<path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84 1.175.98 1.543 1.117 1.543s.277-.368 1.117-1.543a4.21 4.21 0 0 1 3.675-1.941z"/>','like-button');like.onclick=()=>onLike(ipo.id);const comment=action('Comment on','<path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z"/>','comment-button');comment.setAttribute('aria-disabled','true');comment.title='Comments coming soon';comment.onclick=()=>{};const share=action('Share','<line x1="22" x2="9.218" y1="3" y2="10.083"/><polygon points="11.698 20.334 22 3.001 2 3.001 9.218 10.084 11.698 20.334"/>','share-button');share.onclick=()=>onShare(ipo.id);const save=action('Save','<polygon points="20 21 12 13.44 4 21 4 3 20 3 20 21"/>','save-button');save.onclick=()=>onSave(ipo.id);actions.append(like,comment,share,save);
+ const researchSources=el('details',undefined,'research-sources');researchSources.append(el('summary','Sources & observation dates'));const freshness=el('div',undefined,'information-freshness');researchSources.append(freshness);const uniqueSources=new Map();for(const panel of panels){for(const line of panel.querySelectorAll('.source-line')){const key=line.textContent+'|'+[...line.querySelectorAll('a')].map(a=>a.href).join('|');if(!uniqueSources.has(key))uniqueSources.set(key,line);line.remove();}}for(const line of uniqueSources.values())researchSources.append(line);const auditAccordions=el('div',undefined,'evidence-audit-container');refs.hidden=true;auditAccordions.append(refs,researchSources);const history=el('details',undefined,'financial-history');history.append(el('summary','All disclosed financial periods'));for(const story of stories){history.append(el('h5',story.title));const table=el('dl');for(const o of story.observations)table.append(metric(financialPeriod(o.period).label,financialValue(o)));history.append(table);}if(stories.length)auditAccordions.append(history);evidence.append(auditAccordions);
+ const actions=el('div',undefined,'card-actions');const action=(name,paths,className)=>{const button=el('button',undefined,className);button.type='button';button.setAttribute('aria-label',name+' '+ipo.issuer);button.title=name;button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>';return button;};const like=action('Like','<path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84 1.175.98 1.543 1.117 1.543s.277-.368 1.117-1.543a4.21 4.21 0 0 1 3.675-1.941z"/>','like-button');like.onclick=()=>{if(typeof navigator!=='undefined'&&navigator.vibrate)try{navigator.vibrate(10);}catch{}onLike(ipo.id);};const comment=action('Comment on','<path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z"/>','comment-button');comment.setAttribute('aria-disabled','true');comment.title='Comments coming soon';comment.onclick=()=>{};const share=action('Share','<line x1="22" x2="9.218" y1="3" y2="10.083"/><polygon points="11.698 20.334 22 3.001 2 3.001 9.218 10.084 11.698 20.334"/>','share-button');share.onclick=()=>onShare(ipo.id);const initialApplyLabel=getLifecycle(ipo,now).status==='upcoming'?'Pre Applied?':'Applied?';const applyBtn=el('button',initialApplyLabel,'apply-quick-button');applyBtn.type='button';applyBtn.setAttribute('aria-label',(getLifecycle(ipo,now).status==='upcoming'?'Mark pre-applied for ':'Mark applied for ')+ipo.issuer);applyBtn.title=getLifecycle(ipo,now).status==='upcoming'?'Mark whether you pre-applied for this IPO':'Mark whether you applied for this IPO';applyBtn.onclick=()=>{if(typeof navigator!=='undefined'&&navigator.vibrate)try{navigator.vibrate([8,25,12]);}catch{}onApply(ipo.id);};applyBtn.hidden=true;const save=action('Save','<polygon points="20 21 12 13.44 4 21 4 3 20 3 20 21"/>','save-button');save.onclick=()=>{if(typeof navigator!=='undefined'&&navigator.vibrate)try{navigator.vibrate(12);}catch{}onSave(ipo.id);};actions.append(like,comment,share,applyBtn,save);
  slider.addEventListener('focusin',e=>{if(researchLayout){const panel=e.target.closest('.carousel-slide');if(panel){current=panels.indexOf(panel);sync();}}});
  item.setResearchLayout=enabled=>{if(researchLayout===enabled)return;researchLayout=enabled;slider.setAttribute('aria-roledescription',enabled?'research sections':'carousel');slider.setAttribute('aria-label',ipo.issuer+(enabled?' research sections': ' details; use arrow keys or swipe'));sync();slider.scrollTo({left:enabled?0:current*slider.clientWidth,behavior:'instant'});};
  const identityPanel=el('div',undefined,'research-identity');identityPanel.append(header,label);article.append(identityPanel,slider,controls,actions);item.append(article);
  item.setFreshness=(health,clock=new Date().toISOString())=>{const values=informationFreshness(ipo,health,Date.parse(clock));const text=(name,v)=>name+': '+v.state+(v.sourceAt?' · Source observed '+formatDate(v.sourceAt):'')+(v.checkedAt?' · Collector checked '+formatDate(v.checkedAt):'');subscriptionFreshness.textContent=text('Subscription',values.subscription);freshness.replaceChildren(...[['Company / offer',values.company],['Subscription',values.subscription],['Allotment / listing',values.events]].map(([name,v])=>el('p',text(name,v))));};if(currentPreview)item.setFreshness(null,now);
- item.setSaved=saved=>{save.setAttribute('aria-label',saved?'Remove '+ipo.issuer+' from watchlist':'Save '+ipo.issuer+' to watchlist');save.setAttribute('aria-pressed',String(saved));};item.setSocial=state=>{like.setAttribute('aria-pressed',String(state.liked));like.setAttribute('aria-label',(state.liked?'Unlike ':'Like ')+ipo.issuer);comment.setAttribute('aria-label','Comments coming soon for '+ipo.issuer);};item.setEvidence=enabled=>{item.classList.toggle('evidence-active',enabled);if(enabled){current=panels.length-1;sync();if(researchLayout){if(item.dataset.researchSelected==='true'&&!item.hidden)evidence.scrollIntoView({block:'start',behavior:'instant'});}else slider.scrollTo({left:current*slider.clientWidth,behavior:'instant'});}};item.updateLifecycle=clock=>{const state=getLifecycle(ipo,clock);badge.textContent=state.label;badge.dataset.status=state.status;const countdown=closingDayCountdown(ipo,clock,state);lifecycle.textContent=countdown||'';lifecycle.hidden=!countdown;item.dataset.lifecycle=state.status;};item.updateLifecycle(now);item.setSaved(false);return item;
+ item.setSaved=(saved,applied=false)=>{isSaved=Boolean(saved);isApplied=Boolean(applied);item.dataset.saved=String(isSaved);item.dataset.applied=String(isApplied);save.setAttribute('aria-label',isSaved?'Remove '+ipo.issuer+' from watchlist':'Save '+ipo.issuer+' to watchlist');save.setAttribute('aria-pressed',String(isSaved));syncMilestones();};item.setSocial=state=>{like.setAttribute('aria-pressed',String(state.liked));like.setAttribute('aria-label',(state.liked?'Unlike ':'Like ')+ipo.issuer);comment.setAttribute('aria-label','Comments coming soon for '+ipo.issuer);};item.setEvidence=enabled=>{item.classList.toggle('evidence-active',enabled);if(enabled){current=panels.length-1;sync();if(researchLayout){if(item.dataset.researchSelected==='true'&&!item.hidden)evidence.scrollIntoView({block:'start',behavior:'instant'});}else slider.scrollTo({left:current*slider.clientWidth,behavior:'instant'});}else{current=0;sync();if(!researchLayout)slider.scrollTo({left:0,behavior:'instant'});}};item.resetSlide=()=>{current=0;sync();if(!researchLayout)slider.scrollTo({left:0,behavior:'instant'});};item.updateLifecycle=clock=>{currentClock=clock;const state=getLifecycle(ipo,clock);badge.textContent=state.label;badge.dataset.status=state.status;item.dataset.lifecycle=state.status;syncMilestones();};item.updateLifecycle(now);item.setSaved(false,false);return item;
 }
 
 return {el,formatDate,createIPOCard};})();
@@ -831,7 +3349,7 @@ function createRecordStore({schema, catalogue, storage, now = () => new Date().t
       if (typeof text !== 'string' || text.length > MAX_SIZE) throw new Error('Backup must be a JSON file smaller than 2 MB.');
       if (!['merge', 'replace'].includes(mode)) throw new Error('Choose merge or replace.');
       let backup; try { backup = JSON.parse(text); } catch { throw new Error('This file is not valid JSON.'); }
-      if (!backup || typeof backup !== 'object' || Array.isArray(backup) || Object.keys(backup).sort().join(',') !== 'app,backupVersion,data,exportedAt' || backup.app !== 'ipo-radar' || backup.backupVersion !== 1 || !validTimestamp(backup.exportedAt) || Date.parse(backup.exportedAt) > Date.parse(stamp())) throw new Error('Unsupported or invalid IPO Radar backup.');
+      if (!backup || typeof backup !== 'object' || Array.isArray(backup) || Object.keys(backup).sort().join(',') !== 'app,backupVersion,data,exportedAt' || (backup.app !== 'ipo-radar' && backup.app !== 'ipo-wise') || backup.backupVersion !== 1 || !validTimestamp(backup.exportedAt) || Date.parse(backup.exportedAt) > Date.parse(stamp())) throw new Error('Unsupported or invalid IPO WISE backup.');
       validate(backup.data);
       let next = clone(backup.data);
       if (mode === 'merge') {
@@ -847,6 +3365,7 @@ function createRecordStore({schema, catalogue, storage, now = () => new Date().t
 
 return {RECORDS_KEY,recordSummary,createRecordStore};})();
 modules["src/components/records-panel.js"]=(()=>{const {isApplied,allotmentStatus}=modules["src/domain/allotment-status.js"];
+const {getLifecycle}=modules["src/domain/lifecycle.js"];
 const el = (tag, text, className) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; };
 const button = (text, action) => { const node = el('button', text); node.type = 'button'; node.addEventListener('click', action); return node; };
 function createRecordsPanel({store, catalogue, onView = () => {}}) {
@@ -860,7 +3379,28 @@ function createRecordsPanel({store, catalogue, onView = () => {}}) {
   function run(action, success) { try { action(); show(success); } catch (error) { show(error.message); warning.textContent = store.getWarning() || ''; } }
   function render() {
     const state = store.getState(), saved = state.records.filter(record => record.savedAt);
-    stats.replaceChildren(el('p', `${saved.length} saved`));
+    const appliedRecords = state.records.filter(isApplied);
+    let allottedCount = 0, pendingCount = 0;
+    for (const record of saved) {
+      if (isApplied(record)) {
+        const issuer = catalogue?.ipos?.find(ipo => ipo.id === record.ipoId);
+        if (issuer) {
+          const status = allotmentStatus(issuer);
+          if (status.published) allottedCount++;
+          else pendingCount++;
+        }
+      }
+    }
+    const analyticsGrid = el('div', undefined, 'tracker-analytics-grid');
+    const tileSaved = el('div', undefined, 'analytics-kpi-card');
+    tileSaved.innerHTML = `<div class="kpi-top"><span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span><span class="kpi-label">Watchlist</span></div><div class="kpi-value">${saved.length}</div><div class="kpi-caption">Saved issues</div>`;
+    const tileApplied = el('div', undefined, 'analytics-kpi-card' + (appliedRecords.length > 0 ? ' kpi-highlight' : ''));
+    tileApplied.innerHTML = `<div class="kpi-top"><span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span><span class="kpi-label">Applications</span></div><div class="kpi-value">${appliedRecords.length}</div><div class="kpi-caption">${appliedRecords.length === 1 ? '1 active bid' : appliedRecords.length + ' active bids'}</div>`;
+    const tileAllotment = el('div', undefined, 'analytics-kpi-card');
+    tileAllotment.innerHTML = `<div class="kpi-top"><span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></span><span class="kpi-label">Allotments</span></div><div class="kpi-value">${allottedCount}<span class="kpi-subval">/${appliedRecords.length}</span></div><div class="kpi-caption">${allottedCount > 0 ? allottedCount + ' confirmed' : pendingCount > 0 ? pendingCount + ' waiting' : 'No active bids'}</div>`;
+    analyticsGrid.append(tileSaved, tileApplied, tileAllotment);
+    const srFallback = el('p', `${saved.length} saved`, 'visually-hidden');
+    stats.replaceChildren(analyticsGrid, srFallback);
     warning.textContent = store.getWarning() || ''; warning.hidden = !warning.textContent;
     list.replaceChildren(el('h3', 'Saved IPOs'));
     if (!saved.length) list.append(el('p', 'No saved IPOs yet. Save an IPO from the feed to see it here.'));
@@ -868,7 +3408,18 @@ function createRecordsPanel({store, catalogue, onView = () => {}}) {
       const issuer = catalogue.ipos.find(ipo => ipo.id === record.ipoId);
       const card = el('article', undefined, 'record-card');card.dataset.ipoId=record.ipoId; const heading=el('div',undefined,'record-heading');heading.append(el('h4', issuer?.issuer || `Missing issuer: ${record.ipoId}`));card.append(heading);
       if (!issuer) card.append(el('p', 'This issuer is absent from the current catalogue. Its saved record is kept in this browser.'));
-      const applied=isApplied(record);const toggle=button(applied?'Applied':'Applied?',()=>{run(()=>store.setApplied(record.ipoId,!applied),applied?'Applied marker removed.':'Marked as applied on this device.');[...list.querySelectorAll('.record-card')].find(c=>c.dataset.ipoId===record.ipoId)?.querySelector('.applied-toggle')?.focus({preventScroll:true});});toggle.className='applied-toggle';toggle.setAttribute('role','switch');toggle.setAttribute('aria-checked',String(applied));toggle.setAttribute('aria-label','Applied for '+(issuer?.issuer||record.ipoId));toggle.title='Mark whether you applied; saved only on this device.';heading.append(toggle);
+      const applied=isApplied(record);
+      const clock=catalogue?.mode==='demo'?catalogue.referenceAt:new Date().toISOString();
+      const isUpcoming=issuer?getLifecycle(issuer,clock).status==='upcoming':false;
+      const unappliedLabel=isUpcoming?'Pre Applied?':'Applied?';
+      const appliedLabel=isUpcoming?'Pre Applied':'Applied';
+      const toggle=button(applied?appliedLabel:unappliedLabel,()=>{run(()=>store.setApplied(record.ipoId,!applied),applied?(isUpcoming?'Pre-applied marker removed.':'Applied marker removed.'):(isUpcoming?'Marked as pre-applied on this device.':'Marked as applied on this device.'));[...list.querySelectorAll('.record-card')].find(c=>c.dataset.ipoId===record.ipoId)?.querySelector('.applied-toggle')?.focus({preventScroll:true});});
+      toggle.className='applied-toggle';
+      toggle.setAttribute('role','switch');
+      toggle.setAttribute('aria-checked',String(applied));
+      toggle.setAttribute('aria-label',(isUpcoming?'Pre-applied for ':'Applied for ')+(issuer?.issuer||record.ipoId));
+      toggle.title=isUpcoming?'Mark whether you pre-applied; saved only on this device.':'Mark whether you applied; saved only on this device.';
+      heading.append(toggle);
       const footer=el('div',undefined,'record-footer');
       if(applied&&issuer){const status=allotmentStatus(issuer);const box=el('div',undefined,'allotment-status');const date=status.date?new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric'}).format(new Date(status.date))+' IST':null;if(status.published){box.append(el('strong','Allotment out'));if(status.url){const link=el('a','Check allotment ↗');link.href=status.url;link.target='_blank';link.rel='noopener noreferrer';box.append(link);}else box.append(el('p','Registrar status link unavailable.'));}else box.append(el('strong',date?'Allotment expected · '+date:'Allotment date unavailable'));footer.append(box);}
       const actions = el('div', undefined, 'record-actions');
@@ -894,29 +3445,58 @@ const {openShareMenu}=modules["src/components/share-menu.js"];
 const {copyText}=modules["src/domain/clipboard.js"];
 const {loadCatalogue}=modules["src/data/catalogue.js"];
 const {createIPOCard,formatDate}=modules["src/components/ipo-card.js"];
+const {getLifecycle}=modules["src/domain/lifecycle.js"];
+const {isApplied}=modules["src/domain/allotment-status.js"];
 const {createRecordStore}=modules["src/storage/records.js"];
 const {createRecordsPanel}=modules["src/components/records-panel.js"];
+const {toast}=modules["src/components/toaster.js"];
 document.documentElement.classList.toggle('user-view',new URL(location.href).searchParams.get('view')!=='review');
 const $=selector=>document.querySelector(selector);
 const updateClock=()=>{$('#live-clock').textContent=formatLiveClock();$('#live-clock').dateTime=new Date().toISOString();};updateClock();setInterval(updateClock,1000);document.addEventListener('visibilitychange',updateClock);
 const status=$('#status');const finder=$('#discovery-dialog');let finderTrigger=null;
 function closeFinder(){if(finder.open)finder.close();}
 try {
- const requested='live';const mode=['demo','curated','preview','live'].includes(requested)?requested:location.protocol==='file:'?'demo':'live';const connected=mode==='live'?createConnectedFeed():null;const initial=connected?await connected.poll():null;if(connected&&!initial.catalogue)throw Error(initial.message);$('#catalogue-mode').value=mode;$('#catalogue-mode').onchange=()=>{const url=new URL(location.href);url.searchParams.set('catalogue',$('#catalogue-mode').value);url.hash='';location.href=url.href;};$('#engine-preview-notice').hidden=!['preview','live'].includes(mode);const preview=mode==='preview'?await loadEnginePreview():null;const catalogue=initial?.catalogue||(preview?preview.catalogue:await loadCatalogue(mode));let isolatedStorage;if(['preview','live'].includes(mode)){try{isolatedStorage=previewStorage(window.localStorage);}catch{isolatedStorage=null;}}const response=await fetch('./schemas/user-records.schema.json?v=65e439295aac14540838c78d7171988086bea5ebcb855f8ab83ae681d0131dfe',{cache:'no-store'});if(!response.ok)throw new Error('Personal record schema could not load.');const schema=await response.json();const store=createRecordStore({schema,catalogue,...(['preview','live'].includes(mode)?{storage:isolatedStorage}:{})});const clock=()=>catalogue.mode==='demo'?catalogue.referenceAt:new Date().toISOString();
+ const requested='live';
+ const mode=['demo','curated','preview','live'].includes(requested)?requested:(requested==='worst'||new URL(location.href).searchParams.get('data')==='worst')?'worst':(requested==='one'||new URL(location.href).searchParams.get('data')==='one')?'one':location.protocol==='file:'?'demo':'live';
+ const connected=mode==='live'?createConnectedFeed():null;
+ const initial=connected?await connected.poll():null;
+ if(connected&&!initial.catalogue)throw Error(initial.message);
+ if($('#catalogue-mode')) {
+  if(!$('#catalogue-mode').querySelector(`option[value="${mode}"]`)){
+    const opt=document.createElement('option');opt.value=mode;opt.textContent=mode==='worst'?'Worst-case stress test':mode==='one'?'Single item test':mode;$('#catalogue-mode').append(opt);
+  }
+  $('#catalogue-mode').value=mode;
+  $('#catalogue-mode').onchange=()=>{const url=new URL(location.href);url.searchParams.set('catalogue',$('#catalogue-mode').value);url.hash='';location.href=url.href;};
+ }$('#engine-preview-notice').hidden=!['preview','live'].includes(mode);const preview=mode==='preview'?await loadEnginePreview():null;const catalogue=initial?.catalogue||(preview?preview.catalogue:await loadCatalogue(mode));let isolatedStorage;if(['preview','live'].includes(mode)){try{isolatedStorage=previewStorage(window.localStorage);}catch{isolatedStorage=null;}}const response=await fetch('./schemas/user-records.schema.json?v=65e439295aac14540838c78d7171988086bea5ebcb855f8ab83ae681d0131dfe',{cache:'no-store'});if(!response.ok)throw new Error('Personal record schema could not load.');const schema=await response.json();const store=createRecordStore({schema,catalogue,...(['preview','live'].includes(mode)?{storage:isolatedStorage}:{})});const clock=()=>catalogue.mode==='demo'?catalogue.referenceAt:new Date().toISOString();
  if(catalogue.mode==='demo')$('#reference-clock').textContent=`Fixed demo clock: ${formatDate(catalogue.referenceAt)} · Catalogue updated ${formatDate(catalogue.updatedAt)}`;else{$('#dataset-badge').textContent='HISTORICAL REFERENCE';$('#dataset-description').textContent=catalogue.datasetLabel||'2024 IPOs · No live market data';$('#reference-clock').textContent=`Sources reflect historical observations · Source review ${new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric'}).format(new Date(catalogue.reviewedAt||catalogue.updatedAt))} · Historical figures are not current fundamentals · Lifecycle uses current IST time`;}
- let researchLayout;const cards=new Map();const feed=$('#feed-section'),records=$('#records-section');const announce=message=>{status.textContent=message;};let storyFilter='all';const social=createSocialStore(isolatedStorage);
+ let researchLayout;const cards=new Map();const feed=$('#feed-section'),records=$('#records-section');const announce=(message,type='info')=>{status.textContent=message;if(type==='error'||type==='warning')toast.error(message);};let storyFilter='all';const social=createSocialStore(isolatedStorage);
  function navigate(view){if(view==='records'){suggestions.close();closeFinder();}feed.hidden=view!=='feed';records.hidden=view!=='records';$('#feed-nav').setAttribute('aria-pressed',String(view==='feed'));$('#records-nav').setAttribute('aria-pressed',String(view==='records'));researchLayout?.refresh();}
  function viewIPO(id){storyFilter='all';navigate('feed');$('#search').value='';$('#lifecycle-filter').value='all';filter();researchLayout?.select(id);const card=cards.get(id);if(card){card.scrollIntoView({behavior:'smooth',block:'start'});card.querySelector('h3').tabIndex=-1;card.querySelector('h3').focus({preventScroll:true});}else announce('This issue is not present in the current catalogue.');}
- async function share(id){const ipo=catalogue.ipos.find(issue=>issue.id===id);if(!ipo)return;const url=new URL(location.href);url.searchParams.delete('refresh');url.searchParams.set('view','user');url.hash='ipo='+encodeURIComponent(id);const shareDate=date=>date?new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric'}).format(new Date(date))+' IST':'Unavailable';const lines=[ipo.priceBand?`Price band: ₹${ipo.priceBand.min}–₹${ipo.priceBand.max}`:'Price band unavailable',`Lot size: ${ipo.lotSize??'Unavailable'} shares`,`Opens: ${shareDate(ipo.timeline.opensAt)}`,`Closes: ${shareDate(ipo.timeline.closesAt)}`,`Allotment: ${shareDate(ipo.timeline.allotmentPublishedAt||ipo.timeline.allotmentExpectedAt)}${ipo.timeline.allotmentPublishedAt?' · published':' · expected'}`];const text=[`${ipo.issuer} · IPO Radar`,ipo.isDemo?'Fictional demo':ipo.sector||'Mainboard IPO',...lines,'Take a closer look at the business, key figures and offer documents.'].join('\n');openShareMenu({title:ipo.issuer+' · IPO Radar',text,url:url.href,card:{issuer:ipo.issuer,sector:ipo.sector,lines,element:cards.get(id).querySelector('article')}},`${ipo.issuer} · Explore the offer and business on IPO Radar.`);}
+ async function share(id){const ipo=catalogue.ipos.find(issue=>issue.id===id);if(!ipo)return;const url=new URL(location.href);url.searchParams.delete('refresh');url.searchParams.set('view','user');url.hash='ipo='+encodeURIComponent(id);const shareDate=date=>date?new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric'}).format(new Date(date))+' IST':'Unavailable';const lines=[ipo.priceBand?`Price band: ₹${ipo.priceBand.min}–₹${ipo.priceBand.max}`:'Price band unavailable',`Lot size: ${ipo.lotSize??'Unavailable'} shares`,`Opens: ${shareDate(ipo.timeline.opensAt)}`,`Closes: ${shareDate(ipo.timeline.closesAt)}`,`Allotment: ${shareDate(ipo.timeline.allotmentPublishedAt||ipo.timeline.allotmentExpectedAt)}${ipo.timeline.allotmentPublishedAt?' · published':' · expected'}`];const text=[`${ipo.issuer} · IPO WISE`,ipo.isDemo?'Fictional demo':ipo.sector||'Mainboard IPO',...lines,'Take a closer look at the business, key figures and offer documents.'].join('\n');openShareMenu({title:ipo.issuer+' · IPO WISE',text,url:url.href,card:{issuer:ipo.issuer,sector:ipo.sector,lines,element:cards.get(id).querySelector('article')}},`${ipo.issuer} · Explore the offer and business on IPO WISE.`);}
 
- function openComments(id){const trigger=document.activeElement;const ipo=catalogue.ipos.find(issue=>issue.id===id);const dialog=document.createElement('dialog');dialog.className='comments-dialog';dialog.setAttribute('aria-labelledby','comments-title');const title=document.createElement('h2');title.id='comments-title';title.textContent=ipo.issuer+' · Your comments';const info=document.createElement('p');info.textContent='Personal comments, saved only in this browser on this device.';const list=document.createElement('div');list.className='personal-comments';const render=()=>{list.replaceChildren();const comments=social.get(id).comments;if(!comments.length){const empty=document.createElement('p');empty.textContent='What stood out in the research?';list.append(empty);}for(const comment of comments){const entry=document.createElement('article');const text=document.createElement('p');text.textContent=comment.text;const time=document.createElement('small');time.textContent=formatDate(comment.at);entry.append(text,time);list.append(entry);}};const label=document.createElement('label');label.textContent='Your comment';const input=document.createElement('textarea');input.maxLength=1000;input.placeholder='Add your take…';input.setAttribute('aria-label','Your comment');label.append(input);const feedback=document.createElement('p');feedback.setAttribute('role','status');const add=document.createElement('button');add.textContent='Add comment';add.type='button';add.onclick=()=>{try{const state=social.addComment(id,input.value);cards.get(id).setSocial(state);input.value='';render();feedback.textContent=social.getWarning()||'Comment saved on this device.';}catch(error){feedback.textContent=error.message;}};const close=document.createElement('button');close.textContent='Close';close.type='button';close.onclick=()=>dialog.close();dialog.append(title,info,list,label,feedback,add,close);document.body.append(dialog);render();dialog.addEventListener('close',()=>{dialog.remove();trigger?.focus({preventScroll:true});});dialog.showModal();input.focus();}
- function renderCards(){cards.clear();$('#catalogue').replaceChildren();for(const ipo of catalogue.ipos){const card=createIPOCard(ipo,{now:clock(),onSave:id=>{try{store.toggleSaved(id);}catch(error){refreshSaved();announce(error.message);}},onShare:share,onComment:openComments,currentPreview:catalogue.previewScope==='current',onLike:id=>{try{const state=social.toggleLike(id);cards.get(id).setSocial(state);announce(social.getWarning()||(state.liked?'Liked on this device.':'Like removed.'));}catch(error){announce(error.message);}}});card.setSocial(social.get(ipo.id));cards.set(ipo.id,card);$('#catalogue').append(card);if(document.body.classList.contains('evidence-mode'))card.setEvidence(true);}}renderCards();
- function filter(){const ordered=sortFeed(catalogue.ipos,clock());if(ordered.some((ipo,i)=>$('#catalogue').children[i]!==cards.get(ipo.id)))for(const ipo of ordered)$('#catalogue').append(cards.get(ipo.id));const query=$('#search').value.trim().toLocaleLowerCase();const stage=$('#lifecycle-filter').value;let count=0;for(const ipo of catalogue.ipos){const card=cards.get(ipo.id);const visible=ipo.issuer.toLocaleLowerCase().includes(query)&&(stage==='all'||card.dataset.lifecycle===stage)&&matchesStory(ipo,storyFilter,clock());card.hidden=!visible;if(visible)count++;}document.querySelectorAll('[data-stage]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.stage===stage)));$('#count').textContent=`${count} of ${catalogue.ipos.length} issues`;$('#empty').hidden=count!==0;if(catalogue.previewScope==='current')$('#empty').textContent='No matching IPOs in the available source coverage. Other sources or event dates are unverified; this does not establish that no IPOs exist.';$('#finder-results').textContent=`Show ${count} ${count===1?'IPO':'IPOs'} →`;document.querySelectorAll('.story:not(#story-walkthrough)').forEach(button=>button.setAttribute('aria-pressed',String(button.id===({closing:'story-closing',allotment:'story-allotment',listing:'story-listing'}[storyFilter]||(stage==='open'?'story-open':stage==='upcoming'?'story-upcoming':'story-all')))));researchLayout?.refresh();}
- function refreshSaved(){for(const [id,card]of cards)card.setSaved(store.isSaved(id));const warning=store.getWarning();$('#storage-warning').hidden=!warning;$('#storage-warning').textContent=warning||'';}
+ function openComments(id){const trigger=document.activeElement;const ipo=catalogue.ipos.find(issue=>issue.id===id);const dialog=document.createElement('dialog');dialog.className='comments-dialog';dialog.setAttribute('aria-labelledby','comments-title');const title=document.createElement('h2');title.id='comments-title';title.textContent=ipo.issuer+' · Your comments';const info=document.createElement('p');info.textContent='Personal comments, saved only in this browser on this device.';const list=document.createElement('div');list.className='personal-comments';const render=()=>{list.replaceChildren();const comments=social.get(id).comments;if(!comments.length){const empty=document.createElement('p');empty.textContent='What stood out in the research?';list.append(empty);}for(const comment of comments){const entry=document.createElement('article');const text=document.createElement('p');text.textContent=comment.text;const time=document.createElement('small');time.textContent=formatDate(comment.at);entry.append(text,time);list.append(entry);}};const label=document.createElement('label');label.textContent='Your comment';const input=document.createElement('textarea');input.maxLength=1000;input.placeholder='Add your take…';input.setAttribute('aria-label','Your comment');label.append(input);const feedback=document.createElement('p');feedback.setAttribute('role','status');const add=document.createElement('button');add.textContent='Add comment';add.type='button';add.onclick=()=>{try{const state=social.addComment(id,input.value);cards.get(id).setSocial(state);input.value='';render();feedback.textContent=social.getWarning()||'Comment saved on this device.';toast.success('Comment saved on this device');}catch(error){feedback.textContent=error.message;toast.error(error.message);}};const close=document.createElement('button');close.textContent='Close';close.type='button';close.onclick=()=>dialog.close();dialog.append(title,info,list,label,feedback,add,close);document.body.append(dialog);render();dialog.addEventListener('close',()=>{dialog.remove();trigger?.focus({preventScroll:true});});dialog.showModal();input.focus();}
+ function renderCards(){const pulseTrackerNav=()=>{const btn=$('#records-nav');if(!btn)return;btn.classList.remove('tracker-glow-pulse');void btn.offsetWidth;btn.classList.add('tracker-glow-pulse');setTimeout(()=>btn.classList.remove('tracker-glow-pulse'),1850);};cards.clear();$('#catalogue').replaceChildren();for(const ipo of catalogue.ipos){const card=createIPOCard(ipo,{now:clock(),onSave:id=>{try{const wasSaved=store.isSaved(id);store.toggleSaved(id);const issue=catalogue.ipos.find(i=>i.id===id);const name=issue?issue.issuer:'Issue';if(!wasSaved){toast.saved('Saved to Watchlist',{description:'View in My tracker below',action:{label:'Open →',onClick:()=>$('#records-nav').click()}});pulseTrackerNav();}else toast.removed('Removed from watchlist',{description:name});}catch(error){refreshSaved();announce(error.message,'error');}},onApply:id=>{try{const rec=store.getState().records.find(r=>r.ipoId===id);const currentApplied=rec?isApplied(rec):false;store.setApplied(id,!currentApplied);refreshSaved();const issue=catalogue.ipos.find(i=>i.id===id);const isUpcoming=issue?getLifecycle(issue,clock()).status==='upcoming':false;const msg=!currentApplied?(isUpcoming?'Marked as pre-applied on this device.':'Marked as applied on this device.'):(isUpcoming?'Pre-applied marker removed.':'Applied marker removed.');announce(msg);if(!currentApplied){toast.applied(!isUpcoming?'Marked Applied':'Marked Pre-applied',{description:'Check My tracker when allotment is out',action:{label:'My Tracker →',onClick:()=>$('#records-nav').click()}});pulseTrackerNav();}else toast.info('Applied marker removed',{description:issue?.issuer});}catch(error){announce(error.message,'error');}},onShare:share,onComment:openComments,currentPreview:catalogue.previewScope==='current',onLike:id=>{try{const state=social.toggleLike(id);cards.get(id).setSocial(state);const issue=catalogue.ipos.find(i=>i.id===id);if(state.liked)toast.liked('Liked issue',{description:issue?.issuer});else toast.info('Like removed',{description:issue?.issuer});announce(social.getWarning()||(state.liked?'Liked on this device.':'Like removed.'));}catch(error){announce(error.message,'error');}}});card.setSocial(social.get(ipo.id));cards.set(ipo.id,card);$('#catalogue').append(card);if(document.body.classList.contains('evidence-mode'))card.setEvidence(true);}}renderCards();
+ function updateStoryRing(buttonId,count){const btn=document.getElementById(buttonId);if(!btn)return;const ring=btn.querySelector('.story-ring');if(!ring)return;btn.dataset.count=String(count);let svg=ring.querySelector('.story-ring-svg');if(!svg){svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','story-ring-svg');svg.setAttribute('viewBox','0 0 54 54');svg.setAttribute('aria-hidden','true');const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('class','story-ring-circle');circle.setAttribute('cx','27');circle.setAttribute('cy','27');circle.setAttribute('r','24.5');circle.setAttribute('fill','none');circle.setAttribute('stroke-width','2.5');circle.setAttribute('stroke-linecap','round');svg.appendChild(circle);ring.prepend(svg);}const circle=svg.querySelector('.story-ring-circle');if(!circle)return;const C=2*Math.PI*24.5;if(count<=0){circle.setAttribute('stroke','url(#ig-story-muted)');circle.setAttribute('stroke-dasharray','none');circle.setAttribute('stroke-dashoffset','0');circle.setAttribute('stroke-opacity','0.6');}else if(count===1){circle.setAttribute('stroke','url(#ig-story-gradient)');circle.setAttribute('stroke-dasharray','none');circle.setAttribute('stroke-dashoffset','0');circle.setAttribute('stroke-opacity','1');}else{circle.setAttribute('stroke','url(#ig-story-gradient)');circle.setAttribute('stroke-opacity','1');const gap=8;const dash=Math.max(6,(C/count)-gap);circle.setAttribute('stroke-dasharray',`${dash.toFixed(2)} ${gap.toFixed(2)}`);circle.setAttribute('stroke-dashoffset',`${(-(gap/2)).toFixed(2)}`);}}
+ function updateAllStoryRings(){const now=clock();updateStoryRing('story-walkthrough',1);updateStoryRing('story-all',catalogue.ipos.length);updateStoryRing('story-closing',catalogue.ipos.filter(i=>matchesStory(i,'closing',now)).length);updateStoryRing('story-upcoming',catalogue.ipos.filter(i=>matchesStory(i,'upcoming',now)).length);updateStoryRing('story-open',catalogue.ipos.filter(i=>matchesStory(i,'open',now)).length);updateStoryRing('story-allotment',catalogue.ipos.filter(i=>matchesStory(i,'allotment',now)).length);updateStoryRing('story-listing',catalogue.ipos.filter(i=>matchesStory(i,'listing',now)).length);}
+ function filter(){const ordered=sortFeed(catalogue.ipos,clock());if(ordered.some((ipo,i)=>$('#catalogue').children[i]!==cards.get(ipo.id)))for(const ipo of ordered)$('#catalogue').append(cards.get(ipo.id));const query=$('#search').value.trim().toLocaleLowerCase();const stage=$('#lifecycle-filter').value;let count=0;for(const ipo of catalogue.ipos){const card=cards.get(ipo.id);const visible=ipo.issuer.toLocaleLowerCase().includes(query)&&(stage==='all'||card.dataset.lifecycle===stage)&&matchesStory(ipo,storyFilter,clock());card.hidden=!visible;if(visible)count++;}document.querySelectorAll('[data-stage]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.stage===stage)));$('#count').textContent=`${count} of ${catalogue.ipos.length} issues`;$('#empty').hidden=count!==0;if(catalogue.previewScope==='current')$('#empty').textContent='No matching IPOs in the available source coverage. Other sources or event dates are unverified; this does not establish that no IPOs exist.';$('#finder-results').textContent=`Show ${count} ${count===1?'IPO':'IPOs'}`;document.querySelectorAll('.story:not(#story-walkthrough)').forEach(button=>button.setAttribute('aria-pressed',String(button.id===({closing:'story-closing',allotment:'story-allotment',listing:'story-listing'}[storyFilter]||(stage==='open'?'story-open':stage==='upcoming'?'story-upcoming':'story-all')))));researchLayout?.refresh();updateAllStoryRings();}
+ function refreshSaved(){const records=store.getState().records;for(const [id,card]of cards){const rec=records.find(r=>r.ipoId===id);card.setSaved(store.isSaved(id),rec?isApplied(rec):false);}const warning=store.getWarning();$('#storage-warning').hidden=!warning;$('#storage-warning').textContent=warning||'';}
  const recordsPanel=createRecordsPanel({store,catalogue,onView:viewIPO});records.append(recordsPanel);store.subscribe(refreshSaved);refreshSaved();filter();
  const suggestions=attachSearchSuggestions($('#search'),catalogue.ipos,{onChange:filter,onSelect:ipo=>{viewIPO(ipo.id);$('#search').value=ipo.issuer;filter();closeFinder();}});$('#lifecycle-filter').addEventListener('change',filter);$('#reset').onclick=()=>{suggestions.close();$('#search').value='';$('#lifecycle-filter').value='all';filter();};$('#feed-nav').onclick=()=>navigate('feed');$('#records-nav').onclick=()=>navigate('records');$('#evidence-toggle').onclick=()=>{const viewport=$('#main').getBoundingClientRect();const anchor=[...cards.values()].find(card=>!card.hidden&&card.getBoundingClientRect().bottom>viewport.top&&card.getBoundingClientRect().top<viewport.bottom);const anchorTop=anchor?.getBoundingClientRect().top;const enabled=$('#evidence-toggle').getAttribute('aria-pressed')!=='true';$('#evidence-toggle').setAttribute('aria-pressed',String(enabled));document.body.classList.toggle('evidence-mode',enabled);$('#evidence-state').textContent=enabled?'Evidence on':'Show sources';$('#evidence-toggle').setAttribute('aria-label',enabled?'Hide evidence view':'Show facts, risks and sources');for(const card of cards.values())card.setEvidence(enabled);if(anchor)$('#main').scrollBy(0,anchor.getBoundingClientRect().top-anchorTop);announce(enabled?'Evidence view enabled. Sources, facts and editorial analysis are labelled on each issue.':'Standard view enabled.');};
  function deepLink(){const match=location.hash.match(/^#ipo=(.+)$/);if(match){try{viewIPO(decodeURIComponent(match[1]));}catch{announce('This issue link is invalid.');}}}window.addEventListener('hashchange',deepLink);if(preview)$('#engine-preview-notice').textContent=preview.message;announce((preview?(preview.previewLoaded?'Engine snapshot loaded: '+catalogue.ipos.length+(catalogue.previewScope==='current'?' current IPOs from available sources.':' historical IPOs.'):'Preview unavailable; historical catalogue loaded.'):null)||`${catalogue.mode==='demo'?'Demo catalogue':'Historical reference'} ready. Swipe research or choose a slide dot.`);deepLink();
- $('#share-nav').onclick=()=>{const url=new URL(location.href);url.hash='';url.search='?catalogue='+mode+'&view=user';openShareMenu({title:'Share IPO Radar',text:'Before the buzz, check the evidence.\n\nI thought you’d like IPO Radar: swipe through IPO dates, key figures and sourced risks, then save interesting companies to your watchlist.\n\n'+(catalogue.mode==='demo'?'This link opens a fictional product demo.':mode==='live'?'This link opens connected official-source IPO discovery with partial research coverage.':'This link opens historical IPO research, not current market data.')+'\nInformational research; not investment advice.',url:url.href},'Before the buzz, check the evidence. Explore IPO research with IPO Radar.');};const main=$('#main');researchLayout=attachResearchLayout(main);const showFeed=()=>{navigate('feed');main.scrollTo({top:0,behavior:'smooth'});};const resetFeed=()=>{storyFilter='all';$('#reset').click();showFeed();};$('#story-saved').onclick=()=>{navigate('records');main.scrollTop=0;};$('#story-closing').onclick=()=>{storyFilter='closing';$('#search').value='';$('#lifecycle-filter').value='all';filter();showFeed();announce('Showing IPOs closing today in IST.');};$('#story-upcoming').onclick=()=>{storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='upcoming';filter();showFeed();announce('Showing upcoming IPOs from available source coverage.');};$('#story-open').onclick=()=>{storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='open';filter();showFeed();announce('Showing open IPOs from available source coverage.');};const eventStory=kind=>{storyFilter=kind;$('#search').value='';$('#lifecycle-filter').value='all';filter();showFeed();announce(kind==='allotment'?'Showing confirmed allotments from today and the previous two IST calendar days.':'Showing IPOs scheduled or confirmed to list today or tomorrow in IST.');};$('#story-allotment').onclick=()=>eventStory('allotment');$('#story-listing').onclick=()=>eventStory('listing');$('#story-all').onclick=resetFeed;$('#story-walkthrough').onclick=()=>openAppWalkthrough();const openFinder=()=>{finderTrigger=document.activeElement;storyFilter='all';navigate('feed');filter();finder.showModal();$('#search').focus();};$('#search-nav').onclick=openFinder;$('#finder-open').onclick=openFinder;const returnToFeed=()=>{suggestions.close();storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='all';filter();closeFinder();showFeed();};$('#finder-close').onclick=returnToFeed;$('#finder-back').onclick=returnToFeed;document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{$('#lifecycle-filter').value=b.dataset.stage;$('#lifecycle-filter').dispatchEvent(new Event('change',{bubbles:true}));});finder.addEventListener('click',e=>{if(e.target===finder){const r=finder.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)returnToFeed();}});finder.addEventListener('cancel',e=>{e.preventDefault();returnToFeed();});$('#finder-results').onclick=()=>{closeFinder();showFeed();};finder.addEventListener('close',()=>{suggestions.close();if(finderTrigger?.isConnected)finderTrigger.focus({preventScroll:true});});$('#feed-nav').addEventListener('click',()=>main.scrollTo({top:0,behavior:'smooth'}));$('#records-nav').addEventListener('click',()=>{main.scrollTop=0;});$('#reset').addEventListener('click',()=>{storyFilter='all';filter();});$('#lifecycle-filter').addEventListener('change',()=>{storyFilter='all';filter();});
+ const haptic=ms=>{if(typeof navigator!=='undefined'&&navigator.vibrate)try{navigator.vibrate(ms);}catch{}};
+ $('#share-nav').onclick=()=>{haptic(8);const url=new URL(location.href);url.hash='';url.search='?catalogue='+mode+'&view=user';openShareMenu({title:'Share IPO WISE',text:'Before the buzz, check the evidence.\n\nI thought you’d like IPO WISE: swipe through IPO dates, key figures and sourced risks, then save interesting companies to your watchlist.\n\n'+(catalogue.mode==='demo'?'This link opens a fictional product demo.':mode==='live'?'This link opens connected official-source IPO discovery with partial research coverage.':'This link opens historical IPO research, not current market data.')+'\nInformational research; not investment advice.',url:url.href},'Before the buzz, check the evidence. Explore IPO research with IPO WISE.');};const main=$('#main');researchLayout=attachResearchLayout(main);const showFeed=()=>{navigate('feed');main.scrollTo({top:0,behavior:'smooth'});};const resetFeed=()=>{haptic(8);storyFilter='all';$('#reset').click();showFeed();};$('#story-closing').onclick=()=>{haptic(8);storyFilter='closing';$('#search').value='';$('#lifecycle-filter').value='all';filter();showFeed();announce('Showing IPOs closing today in IST.');};$('#story-upcoming').onclick=()=>{haptic(8);storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='upcoming';filter();showFeed();announce('Showing upcoming IPOs from available source coverage.');};$('#story-open').onclick=()=>{haptic(8);storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='open';filter();showFeed();announce('Showing open IPOs from available source coverage.');};const eventStory=kind=>{haptic(8);storyFilter=kind;$('#search').value='';$('#lifecycle-filter').value='all';filter();showFeed();announce(kind==='allotment'?'Showing confirmed allotments from today and the previous two IST calendar days.':'Showing IPOs scheduled or confirmed to list today or tomorrow in IST.');};$('#story-allotment').onclick=()=>eventStory('allotment');$('#story-listing').onclick=()=>eventStory('listing');$('#story-all').onclick=resetFeed;$('#story-walkthrough').onclick=()=>{haptic(8);openAppWalkthrough();};const openFinder=()=>{haptic(8);finderTrigger=document.activeElement;storyFilter='all';navigate('feed');filter();finder.showModal();$('#search').focus();};$('#search-nav').onclick=openFinder;$('#finder-open').onclick=openFinder;const returnToFeed=()=>{suggestions.close();storyFilter='all';$('#search').value='';$('#lifecycle-filter').value='all';filter();closeFinder();showFeed();};$('#finder-close').onclick=returnToFeed;$('#finder-back').onclick=returnToFeed;document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{haptic(6);$('#lifecycle-filter').value=b.dataset.stage;$('#lifecycle-filter').dispatchEvent(new Event('change',{bubbles:true}));});finder.addEventListener('click',e=>{if(e.target===finder){const r=finder.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)returnToFeed();}});finder.addEventListener('cancel',e=>{e.preventDefault();returnToFeed();});$('#finder-results').onclick=()=>{closeFinder();showFeed();};finder.addEventListener('close',()=>{suggestions.close();if(finderTrigger?.isConnected)finderTrigger.focus({preventScroll:true});});$('#feed-nav').addEventListener('click',()=>{haptic(8);main.scrollTo({top:0,behavior:'smooth'});});$('#records-nav').addEventListener('click',()=>{haptic(8);main.scrollTop=0;});$('#reset').addEventListener('click',()=>{storyFilter='all';filter();});$('#lifecycle-filter').addEventListener('change',()=>{storyFilter='all';filter();});
+ function initDevBreakToggle(currentMode){
+  if(!['localhost','127.0.0.1'].includes(location.hostname)&&!location.search.includes('data='))return;
+  const toggle=document.createElement('nav');toggle.className='dev-break-toggle';toggle.setAttribute('aria-label','Dev Data Fixture');
+  const states=[{id:'demo',label:'Demo'},{id:'curated',label:'Curated'},{id:'worst',label:'Worst case'},{id:'one',label:'One'}];
+  for(const s of states){
+    const btn=document.createElement('button');btn.type='button';btn.textContent=s.label;btn.setAttribute('aria-pressed',String(currentMode===s.id));
+    btn.onclick=()=>{const url=new URL(location.href);if(s.id==='demo'||s.id==='curated'){url.searchParams.delete('data');url.searchParams.set('catalogue',s.id);}else{url.searchParams.set('data',s.id);url.searchParams.set('catalogue',s.id);}location.href=url.href;};
+    toggle.append(btn);
+  }
+  document.body.append(toggle);
+ }
+ initDevBreakToggle(mode);
  if(connected){
   function describeConnection(result){$('#engine-preview-notice').textContent=result.message;$('#dataset-badge').textContent=result.state==='stale'?'CONNECTED · STALE':'CONNECTED FEED';$('#dataset-description').textContent='Official-source discovery · Partial research coverage';$('#reference-clock').textContent=result.message;for(const card of cards.values())card.setFreshness(result.health,clock());}
   describeConnection(initial);announce('Connected feed loaded: '+catalogue.ipos.length+' IPOs from available official sources.');
