@@ -307,14 +307,6 @@
                 "observedAt": {
                   "type": "string",
                   "format": "date-time"
-                },
-                "sourcePages": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "uniqueItems": true
                 }
               },
               "required": [
@@ -410,6 +402,40 @@
               "date",
               "timestamp"
             ]
+          },
+          "buzz": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "method": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "sourceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "observedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "score",
+              "method",
+              "sourceIds",
+              "observedAt"
+            ],
+            "additionalProperties": false
           },
           "offerTerms": {
             "type": "object",
