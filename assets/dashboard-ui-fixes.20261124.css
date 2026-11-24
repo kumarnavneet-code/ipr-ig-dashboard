@@ -1,0 +1,19 @@
+/* Center milestone markers on the shared phone timeline rail. */
+@media(max-width:559px){
+ .issue-dates{position:relative;isolation:isolate;--timeline-line-y:36px}
+ .issue-dates::before{content:"";position:absolute;left:12.5%;right:12.5%;top:var(--timeline-line-y);height:2px;border-radius:999px;background:#cbd5e1;z-index:0;pointer-events:none}
+ .issue-dates .metric{position:static!important;text-align:center}
+ .issue-dates .metric::before{content:""!important;display:block!important;position:absolute!important;top:calc(var(--timeline-line-y) - 4px)!important;margin:0!important;width:8px!important;height:8px!important;border:2px solid #64748b!important;border-radius:50%!important;background:#fff!important;box-sizing:border-box!important;z-index:1!important}
+ .issue-dates .milestone-opens::before{left:calc(12.5% - .25px)!important}
+ .issue-dates .milestone-closes::before{left:calc(37.5% - 2.75px)!important}
+ .issue-dates .milestone-allotment::before{left:calc(62.5% - 5.25px)!important}
+ .issue-dates .milestone-listing::before{left:calc(87.5% - 7.75px)!important}
+ .issue-dates .metric dd{margin-top:16px!important}
+ .evidence-mode .issue-dates::before{background:#475569}
+ .evidence-mode .issue-dates .metric::before{background:#151515!important;border-color:#94a3b8!important}
+}
+
+/* Keep per-card social and save actions out of the landscape research view. */
+@media (min-width:560px) and (orientation:landscape){
+ .research-workspace .card-actions{display:none!important}
+}
